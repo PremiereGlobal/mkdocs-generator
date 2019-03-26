@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 REPO="premiereglobal/mkdocs-generator"
 TAG=${1:-"dev"}
