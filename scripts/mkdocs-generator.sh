@@ -6,7 +6,8 @@ python build-markdown-tree.py
 if [ $? -eq 0 ]; then
   # Build the mkdocs
   cd /build
-  mkdocs build --site-dir /html
+  rm -rf /html/*
+  mkdocs build --dirty --site-dir /html
 
   # Push the site to github
   rm -rf /destination
