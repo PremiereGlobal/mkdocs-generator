@@ -1,10 +1,11 @@
 #!/bin/sh
 
+REPO="premiereglobal/mkdocs-generator"
 TAG=${1:-"dev"}
-PUBLISH=${2:-"false"}
+PUBLISH=${2:-""}
 
-docker build -t premiereglobal/mkdocs-generator:${TAG} ./
+docker build -t ${REPO}:${TAG} ./
 
-if [ -z ${PUBLISH} ]; then
-  docker push premiereglobal/mkdocs-generator:${TAG}
+if [ "${PUBLISH}" == "true" ]; then
+  docker push ${REPO}:${TAG}
 fi
