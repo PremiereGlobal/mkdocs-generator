@@ -35,10 +35,10 @@ of this parameter has the format `<VARIABLE_NAME>=<VALUE>`.
 |`BITBUCKET_URL`| The full address of the instance of Bitbucket to scan. For example `https://bitbucket.mysite.com` | required |
 |`BITBUCKET_USER`| User to use to authenticate against Bitbucket. | required |
 |`BITBUCKET_TOKEN`| Bitbucket user token. | required |
-|`GITHUB_URL`| The Github url of the repo to push the site to (excluding the `https://`).  For example `github.com/myorg/docs` | required |
-|`GITHUB_USER`| User to use to authenticate against Github | required |
-|`GITHUB_TOKEN`| Github user token | required |
-|`GITHUB_USER_EMAIL`| Email to use in the git config when pushing to Github | required |
+|`GITHUB_URL`| The Github url of the repo to push the site to (excluding the `https://`).  For example `github.com/myorg/docs` | optional |
+|`GITHUB_USER`| User to use to authenticate against Github | required if `GITHUB_URL` set |
+|`GITHUB_TOKEN`| Github user token | required if `GITHUB_URL` set |
+|`GITHUB_USER_EMAIL`| Email to use in the git config when pushing to Github | required if `GITHUB_URL` set |
 |`GITHUB_BRANCH`| If specified, will push to this Github branch | `master` |
 
 [Build-Status-Url]: https://travis-ci.org/PremiereGlobal/mkdocs-generator
