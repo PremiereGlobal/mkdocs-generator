@@ -10,6 +10,6 @@ deploy:
   on:
     tags: true
 - provider: script
-  script: bash scripts/publish_docker.sh ${TRAVIS_BRANCH}
+  script: bash publish_docker.sh ${TRAVIS_BRANCH}
   on:
     branch: master
