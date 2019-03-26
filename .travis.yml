@@ -3,13 +3,17 @@ language: minimal
 services:
 - docker
 script:
-- ./build_docker.sh ${TRAVIS_BRANCH}
+- "./build_docker.sh ${TRAVIS_BRANCH}"
 deploy:
 - provider: script
-  script: ./build_docker.sh ${TRAVIS_BRANCH} true
+  script: "./build_docker.sh ${TRAVIS_BRANCH} true"
   on:
     tags: true
 - provider: script
-  script: ./build_docker.sh ${TRAVIS_BRANCH} true
+  script: "./build_docker.sh ${TRAVIS_BRANCH} true"
   on:
     branch: master
+env:
+  global:
+  - secure: i5OBypotPReQdssWwnhoNi5+LNO+fxgvFnOTgcHUyZoox2OHf3+bYvVr+xr9dLY94K/xN+3qcoD+Aj9ADXvp7ZfLIPCtrxAND7pmLtj1tFkEH0RDjrMGVqfWGokeql8/vnUuzsgwNCjO/Ohis8em5PowRLVtmkkVWag7bw3GYNJP+c7es44WRfo+uUzlo4fE52iPdc1pKxGoU8c9KGIFZ6A8eWPhK3NWkw6w33ke/oF9K9pjQR1cJK218odhhs4A+57Z8G7LwnKLmKFnv+QDBhSXaMFs4fxtxrnuTXYrBX30KDwKNJRC8QKg870em4LmrPXx/ZsOYblNS87RtZXH5HKn4LpXaoOzNrW+2bCW47gWOybKDdKBL8Zyn7gtp/uWET4nIda0q+CJbrNA4udoyMeRHWwI6vffjBGXfRJ/zCM70s16TwmAa/m7Tq3yTCStWuRnKNZSx1LM7H04P8cJ25wmnY446E2J4lHPFgZhC/35DYTJYKeK+KFMQT5o5VmIJYENUwR1Ovw5MD2/alk49DQGJzGgKcf+F9mtsN0WKM1o1jk5JgvruQC6Ug8KGa6bjyq4/jDgDQnk3dRPGnFGu8tQ6Ba0nnjpItAuEnxEvIY35gLJQ2eZ1ZREqz3AovPMddnsQXawRcr5zrbERsd5QydI/bfQovp5EVyNvmRQ/Qw=
+  - secure: UrfJC6c0H0/u+oacRWZeDOuOgSb4ZUUSFLPjzGyZyNjY1JKSCaa0kqIinP78tVAly4rXDZIK7xLgDPHw9VkqVyTriohzFP4TY2GI7Yj2+9GA9M2vUP4XJKlVYvN+03IdUu5lZqKwVdLDu8VkFVYrVc+ZP8yPolPsAUu03A217b+5QqSEN3f/1eQ4ehEUDKUR/zsXp0DaqWQb4bkFR1OayM2+1gfj5qCbToBeWnn0ZDH5gl4RfYMBIv8z2Ykq/no5fgWlDeTyxiUXxBGUD51YvZyIn79esmuEA51WwTdUcAhPAsy6uizsLRoQWzXi/Qv6HX00CgpNTHPpRIougA+G8ilgbJdxXfgJSRETew6aRziS9A+RQ1SShUBpI2c3BYN5aSAw/5ciemqzeJMeCYARIoW93aWrK80bOmjfxt3tPksTxTUqxLEE8JYRyM68YQor9XWEDbjVdOaIYvIEgknRm8tWmhsBndnWttQt/WAdcSXNd5t74JqnCwXzv4IRnrvChxohLyOA9UwIckhiBaA+a9k1OF16DXtL6//vIhlFgSXqjTA6s2CtRzj5Fb7DGlbNVCUFd1p9E/g3gmnBefLVrGzwUTauCEr5dsDusmjgicFmRf/fH0lySX35Bt+z0v0UTmpPautKnfcsj4rCl45S86pEQW+QttUNWod74YAUvrg=
