@@ -3,13 +3,13 @@ language: minimal
 services:
 - docker
 script:
-- build_docker.sh ${TRAVIS_BRANCH}
+- ./build_docker.sh ${TRAVIS_BRANCH}
 deploy:
 - provider: script
-  script: bash build_docker.sh ${TRAVIS_BRANCH} true
+  script: ./build_docker.sh ${TRAVIS_BRANCH} true
   on:
     tags: true
 - provider: script
-  script: bash publish_docker.sh ${TRAVIS_BRANCH}
+  script: ./build_docker.sh ${TRAVIS_BRANCH} true
   on:
     branch: master
