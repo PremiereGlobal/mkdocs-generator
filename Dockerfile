@@ -10,4 +10,7 @@ COPY scripts /scripts
 
 ENV GITHUB_BRANCH=master
 
+VOLUME /docs
+VOLUME /html
+
 CMD ["./mkdocs-generator.sh"]

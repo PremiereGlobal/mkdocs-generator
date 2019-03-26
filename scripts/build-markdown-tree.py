@@ -32,8 +32,8 @@ def getRepo(project_key, project_name, repository_slug, repository_name):
         myzipfile = zipfile.ZipFile(zipdata)
         tempdir = tempfile.TemporaryDirectory(prefix="docs-")
         myzipfile.extractall(path=tempdir.name)
-        copytree(src=tempdir.name+"/docs/", dst=build_directory+"/src/docs/projects/"+project_key+"/"+repository_slug)
-        files = os.listdir(build_directory+"/src/docs/projects/"+project_key+"/"+repository_slug)
+        copytree(src=tempdir.name+"/docs/", dst=build_directory+"/docs/projects/"+project_key+"/"+repository_slug)
+        files = os.listdir(build_directory+"/docs/projects/"+project_key+"/"+repository_slug)
         repo_items = []
         # Add the index file with the name of the repo (should it be done this weay?)
         repo_items.append({ "Home": "projects/"+project_key+"/"+repository_slug+"/index.md" })
@@ -48,28 +48,47 @@ def getRepo(project_key, project_name, repository_slug, repository_name):
                 project_nav[project_name][repository_name] = []
             project_nav[project_name][repository_name] = repo_items
 
+# Check that our required variables exist
+if 'BITBUCKET_URL' not in os.environ:
+    print("BITBUCKET_URL not set")
+    exit(1)
+if 'BITBUCKET_USER' not in os.environ:
+    print("BITBUCKET_USER not set")
+    exit(1)
+if 'BITBUCKET_TOKEN' not in os.environ:
+    print("BITBUCKET_TOKEN not set")
+    exit(1)
+if 'GITHUB_URL' not in os.environ:
+    print("GITHUB_URL not set")
+    exit(1)
+if 'GITHUB_USER' not in os.environ:
+    print("GITHUB_USER not set")
+    exit(1)
+if 'GITHUB_TOKEN' not in os.environ:
+    print("GITHUB_TOKEN not set")
+    exit(1)
+if 'GITHUB_USER_EMAIL' not in os.environ:
+    print("GITHUB_USER_EMAIL not set")
+    exit(1)
+if not os.path.isfile('/docs/mkdocs.yml'):
+    print("mkdocs.yml file not found in path /docs")
+    exit(1)
+
 bitbucket_url = os.environ['BITBUCKET_URL']
 bitbucket_user = os.environ['BITBUCKET_USER']
 bitbucket_password = os.environ['BITBUCKET_TOKEN']
-build_directory = "/scripts/build"
+build_directory = "/build"
 
-# Check that our required variables exist
-if os.environ['BITBUCKET_URL'] == "":
-    print "BITBUCKET_URL not set"
-    exit(1)
-if os.environ['BITBUCKET_USER'] == "":
-    print "BITBUCKET_USER not set"
-    exit(1)
-
-# Clean up the build directory and make a copy of the relevent docs
+# Clean up the build directory (if it exists) and make a copy of the relevent docs
 rmtree(path=build_directory, ignore_errors="true")
-os.makedirs(build_directory)
-copytree(src="docs", dst=build_directory+"/src/docs")
-copyfile(src="mkdocs.yml", dst=build_directory+"/src/mkdocs.yml")
+copytree(src="/docs", dst=build_directory)
+os.chdir(build_directory)
+if not os.path.exists(build_directory+"/docs"):
+    os.makedirs(build_directory+"/docs")
 
+# Start the scrape - we thread this to go faster
 stash = stashy.connect(bitbucket_url, bitbucket_user, bitbucket_password)
 scheduler = threadly.Scheduler(20)
-
 futures = []
 for project in stash.projects.list():
     project_key = project['key']
@@ -82,10 +101,9 @@ for project in stash.projects.list():
 for f in futures:
     f.get()
 
-os.chdir(build_directory+"/src")
 with open('mkdocs.yml', 'r+') as fp:
     data = yaml.load(fp, Loader=yaml.FullLoader)
-    data['copyright'] = "Last updated: %s" % (datetime.datetime.now().astimezone(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d %H:%M:%S %Z'))
+    # data['copyright'] = "Last updated: %s" % (datetime.datetime.now().astimezone(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d %H:%M:%S %Z'))
     project_nav = {k: project_nav[k] for k in sorted(project_nav.keys())}
     for key, value in project_nav.items():
         project_nav[key] = {k: project_nav[key][k] for k in sorted(project_nav[key].keys())}

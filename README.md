@@ -18,6 +18,12 @@ docker run \
   premiereglobal/mkdocs-generator
 ```
 
+### Docker Volume Mounts
+Two volume mounts should be considered
+
+`/docs` - should have a `mkdocs.yaml` file as well as any top-level markdown files in a subdirectoy named `docs`
+`/html` - will contain the final results
+
 ### Docker Environment Variables
 
 To customize some properties of the container, the following environment
