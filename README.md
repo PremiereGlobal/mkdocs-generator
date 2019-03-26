@@ -1,4 +1,5 @@
 # Mkdocs Generator
+[![Build][Build-Status-Image]][Build-Status-Url]
 This project scans an entire bitbucket instance for repositories with documentation and builds a [mkdocs](https://www.mkdocs.org/) website.  The generated HTML is then pushed to a Github repo to be used as an offline documentation source.
 
 ## Docker
@@ -32,3 +33,6 @@ of this parameter has the format `<VARIABLE_NAME>=<VALUE>`.
 |`GITHUB_TOKEN`| Github user token | required |
 |`GITHUB_USER_EMAIL`| Email to use in the git config when pushing to Github | required |
 |`GITHUB_BRANCH`| If specified, will push to this Github branch | `master` |
+
+[Build-Status-Url]: https://travis-ci.org/PremiereGlobal/mkdocs-generator
+[Build-Status-Image]: https://travis-ci.org/PremiereGlobal/mkdocs-generator.svg?branch=master
