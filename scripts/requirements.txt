@@ -1,0 +1,6 @@
+mkdocs
+mkdocs-material
+pyyaml
+pytz
+stashy
+threadly
