@@ -18,7 +18,7 @@ if [ $? -eq 0 ]; then
   git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@${GITHUB_URL}
   cd docs
   rm -rf html
-  cp -R /build-html ./
+  cp -R /build-html ./html
   git add html
   git commit -m "Auto-commit generated docs"
   git push origin ${GITHUB_BRANCH}
