@@ -6,8 +6,8 @@ python build-markdown-tree.py
 if [ $? -eq 0 ]; then
   # Build the mkdocs
   cd /build
-  rm -rf /html/*
-  mkdocs build --dirty --site-dir /html
+  mkdocs build --clean --site-dir /build-html
+  rsync --archive --recursive --delete /build-html/ /html/
 
   # Push the site to github
   rm -rf /destination
@@ -18,7 +18,7 @@ if [ $? -eq 0 ]; then
   git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@${GITHUB_URL}
   cd docs
   rm -rf html
-  cp -R /html ./
+  cp -R /build-html ./
   git add html
   git commit -m "Auto-commit generated docs"
   git push origin ${GITHUB_BRANCH}
