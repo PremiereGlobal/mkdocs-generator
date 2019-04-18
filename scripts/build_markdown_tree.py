@@ -5,10 +5,10 @@ import stashy
 from shutil import copytree, copyfile, rmtree
 import requests
 import yaml
-import threadly
 import threading
 import json
 import argparse
+import asyncio
 
 project_struct = []
 project_nav = {}
@@ -16,12 +16,12 @@ lock = threading.Lock()
 repo_url = '{bitbucket_url}/rest/api/1.0/projects/{project_key}/repos/{repository_slug}' # noqa
 
 
-def getRepo(bitbucket_url, project, repo, session, build_directory='docs'):
+async def getRepo(bitbucket_url, project, repo, session,
+                  build_directory='docs'):
 
+    docs_found = []
     project_key = project.get('key')
-    project_name = project.get('name')
     repository_slug = repo.get('slug')
-    repository_name = repo.get('name')
 
     url = repo_url.format(
         bitbucket_url=bitbucket_url,
@@ -30,10 +30,9 @@ def getRepo(bitbucket_url, project, repo, session, build_directory='docs'):
 
     r = session.get(url + '/browse', params={'at': 'refs/heads/master'})
     if r.status_code != 200:
-        return
+        return docs_found
 
     index = json.loads(r.text)
-    docs_found = []
 
     for fileobj in index['children']['values']:
         path = fileobj.get('path')
@@ -56,22 +55,7 @@ def getRepo(bitbucket_url, project, repo, session, build_directory='docs'):
                 text_file.write(file_request.text)
             docs_found.append(filename)
 
-    if len(docs_found) > 0:
-        with lock:
-            if project_name not in project_nav:
-                project_nav[project_name] = {}
-
-    if len(docs_found) == 1:
-        with lock:
-            project_nav[project_name][repository_name] = os.path.join(
-                'projects', project_key, repository_slug, docs_found[0])
-
-    if len(docs_found) > 1:
-        project_nav[project_name][repository_name] = {}
-        for doc in docs_found:
-            with lock:
-                project_nav[project_name][repository_name][doc] = os.path.join(
-                    'projects', project_key, repository_slug, doc)
+    return docs_found
 
 
 def validate_environment():
@@ -102,22 +86,38 @@ def cleanup(build_directory, docs_directory):
         os.makedirs(build_directory+'/docs')
 
 
-def do_a_thing(stash_sesh, web_sesh):
+async def do_a_thing(bitbucket_url, stash_sesh, web_sesh):
     '''Start the scrape - we thread this to go faster
     '''
-    scheduler = threadly.Scheduler(20)
+    project_nav = {}
 
-    futures = []
     for project in stash_sesh.projects.list():
 
+        project_name = project.get('name')
         project_key = project.get('key')
 
         for repo in stash_sesh.projects[project_key].repos.list():
-            lf = scheduler.schedule_with_future(getRepo, args=(
-                bitbucket_url, project, repo, web_sesh))
-            futures.append(lf)
-    for f in futures:
-        f.get()
+            repository_name = repo.get('name')
+            repository_slug = repo.get('slug')
+
+            docs_found = await getRepo(bitbucket_url, project, repo, web_sesh)
+
+            if len(docs_found) > 0:
+                with lock:
+                    if project_name not in project_nav:
+                        project_nav[project_name] = {}
+
+            if len(docs_found) == 1:
+                with lock:
+                    project_nav[project_name][repository_name] = os.path.join(
+                        'projects', project_key, repository_slug, docs_found[0])
+
+            if len(docs_found) > 1:
+                project_nav[project_name][repository_name] = {}
+                for doc in docs_found:
+                    with lock:
+                        project_nav[project_name][repository_name][doc] = os.path.join(
+                            'projects', project_key, repository_slug, doc)
 
     with open('mkdocs.yml', 'r+') as fp:
         data = yaml.load(fp, Loader=yaml.FullLoader)
@@ -137,8 +137,7 @@ def do_a_thing(stash_sesh, web_sesh):
         fp.truncate()
 
 
-if __name__ == '__main__':
-
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--builddir', default='/build')
     parser.add_argument('--docsdir', default='/docs')
@@ -160,4 +159,8 @@ if __name__ == '__main__':
 
     stash = stashy.connect(bitbucket_url, bitbucket_user, bitbucket_password)
 
-    do_a_thing(stash, session)
+    await do_a_thing(bitbucket_url, stash, session)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
