@@ -4,8 +4,8 @@ import os
 import re
 import stashy
 import requests
+import concurrent.futures
 from urllib.parse import urlparse, urlunparse
-from concurrent.futures import ThreadPoolExecutor
 
 import pprint
 
@@ -21,7 +21,7 @@ class FileTree(dict):
 
 def scan_repos(stash, session):
 
-    project_meta = {}
+    repos = {}
     projects = stash.projects.list()
 
     for project in projects:
@@ -33,12 +33,10 @@ def scan_repos(stash, session):
             repo_slug = repo.get('slug')
             repo_addr = repo['links']['self'][0].get('href')
 
-            docs = find_docs(repo_addr, session)
+            repos[
+                (project_key, project_name, repo_slug, repo_name)] = repo_addr
 
-            project_meta[(project_key, repo_slug)] = (project_name,
-                                                      repo_name,
-                                                      docs)
-    return project_meta
+    return repos
 
 
 def find_docs(url, session):
@@ -107,9 +105,22 @@ if __name__ == '__main__':
     session = requests.Session()
     session.auth = (bitbucket_user, bitbucket_password)
 
-    meta = scan_repos(stash, session)
-    project_tree = FileTree()
+    repos = scan_repos(stash, session)
 
-    for (project_key, repo_slug), docs in meta.items():
-        project_tree[project_key][repo_slug] = docs
-    pprint.pprint(project_tree)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_docs = {executor.submit(find_docs, url, session):
+                       keys for keys, url in repos.items()}
+        for future in concurrent.futures.as_completed(future_docs):
+            (project_key, project_name,
+             repo_slug, repo_name) = future_docs[future]
+            files = future.result()
+
+            for file_name, url in files:
+                file_req = session.get(url, params={'at': 'refs/heads/master'})
+                file_path = os.path.join('build', 'docs', 'projects',
+                                         project_key, repo_slug)
+
+                os.makedirs(file_path, exist_ok=True)
+
+                with open(os.path.join(file_path, file_name), 'w') as text_file:
+                    text_file.write(file_req.text)
