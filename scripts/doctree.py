@@ -4,10 +4,13 @@ import os
 import re
 import stashy
 import requests
-import concurrent.futures
-from urllib.parse import urlparse, urlunparse
+from queue import Queue
+from collections import namedtuple
+from urllib.parse import urlparse, urlunparse, urljoin
 
-import pprint
+import markdown
+from markdown.treeprocessors import Treeprocessor
+from markdown.extensions import Extension
 
 
 class FileTree(dict):
@@ -19,7 +22,46 @@ class FileTree(dict):
         return value
 
 
-def scan_repos(stash, session):
+FileKeys = namedtuple('FileKeys',
+                      'project_key, project_name, repo_slug, repo_name')
+
+Document = namedtuple('Document', 'keys, filename, url')
+
+
+class LinkExtractor(Treeprocessor):
+    def run(self, doc):
+        self.md.links = []
+        for link in doc.findall('.//a'):
+            self.md.links.append(link.get('href'))
+
+
+class LinkExtractorExtension(Extension):
+    def extendMarkdown(self, md):
+        md.registerExtension(self)
+        link_ext = LinkExtractor(md)
+        md.treeprocessors.register(link_ext, 'linkext', 1)
+
+
+class ImageExtractor(Treeprocessor):
+    def run(self, doc):
+        self.md.images = []
+        for img in doc.findall('.//img'):
+            self.md.images.append(img.get('src'))
+
+
+class ImageExtractorExtension(Extension):
+    def extendMarkdown(self, md):
+        md.registerExtension(self)
+        img_ext = ImageExtractor(md)
+        md.treeprocessors.register(img_ext, 'imgext', 2)
+
+
+md = markdown.Markdown(extensions=[
+    LinkExtractorExtension(),
+    ImageExtractorExtension()])
+
+
+def scan_repos(stash):
 
     repos = {}
     projects = stash.projects.list()
@@ -33,13 +75,13 @@ def scan_repos(stash, session):
             repo_slug = repo.get('slug')
             repo_addr = repo['links']['self'][0].get('href')
 
-            repos[
-                (project_key, project_name, repo_slug, repo_name)] = repo_addr
+            keys = FileKeys(project_key, project_name, repo_slug, repo_name)
+            repos[keys] = repo_addr
 
     return repos
 
 
-def find_docs(url, session):
+def find_docs(keys, url, session):
     '''Find markdown documents at the root of a repo
     '''
     o = urlparse(url)
@@ -48,12 +90,12 @@ def find_docs(url, session):
                           '/rest/api/1.0' + o.path,
                           o.params, o.query, o.fragment))
     found = []
-    req = session.get(api_url, params={'at': 'refs/heads/master'})
 
-    if req.status_code != 200:
-        return found
-
-    index = req.json()
+    params = {'at': 'refs/heads/master'}
+    with session.get(api_url, params=params) as response:
+        if response.status_code != 200:
+            return found
+        index = response.json()
 
     for fileobj in index['children']['values']:
         path = fileobj.get('path')
@@ -66,17 +108,55 @@ def find_docs(url, session):
                                   api.netloc,
                                   raw_path,
                                   api.params, api.query, api.fragment))
-            found.append((filename, raw_url))
+            print('Found {} at {}'.format(filename, raw_url))
+            found.append(Document(keys, filename, raw_url))
 
     return found
 
 
-def store_docs():
-    pass
+def store_docs(docs, session):
 
+    q = Queue()
 
-def follow_links():
-    pass
+    for doc in docs:
+        q.put(doc)
+
+    while not q.empty():
+        doc = q.get()
+
+        file_req = session.get(doc.url, params={'at': 'refs/heads/master'})
+        file_path = os.path.join('build', 'docs', 'projects',
+                                 doc.keys.project_key, doc.keys.repo_slug)
+
+        content = file_req.text
+        if len(content) == 0:
+            return
+
+        md.convert(content)
+
+        for image in md.images:
+            parsed = urlparse(image)
+            if not parsed.netloc:
+                image_url = urljoin(doc.url, image)
+                q.put(Document(doc.keys, image, image_url))
+
+        for link in md.links:
+            parsed = urlparse(link)
+            if not parsed.netloc:
+                link_url = urljoin(doc.url, link)
+                q.put(Document(doc.keys, link, link_url))
+
+        long_path = os.path.join(file_path, doc.filename)
+        write_path = os.path.dirname(long_path)
+
+        os.makedirs(write_path, exist_ok=True)
+
+        with open(os.path.join(file_path, doc.filename), 'w') as text_file:
+            text_file.write(content)
+
+        q.task_done()
+
+    q.join()
 
 
 def build_nav():
@@ -96,31 +176,23 @@ def validate_environment():
     return tuple(resp)
 
 
-if __name__ == '__main__':
-
+def main():
     bitbucket_url, bitbucket_user, bitbucket_password = validate_environment()
-
     stash = stashy.connect(bitbucket_url, bitbucket_user, bitbucket_password)
 
     session = requests.Session()
     session.auth = (bitbucket_user, bitbucket_password)
 
-    repos = scan_repos(stash, session)
+    repos = scan_repos(stash)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_docs = {executor.submit(find_docs, url, session):
-                       keys for keys, url in repos.items()}
-        for future in concurrent.futures.as_completed(future_docs):
-            (project_key, project_name,
-             repo_slug, repo_name) = future_docs[future]
-            files = future.result()
+    docs = []
+    for keys, repo_url in repos.items():
+        found = find_docs(keys, repo_url, session)
+        if len(found) > 0:
+            docs.extend(found)
 
-            for file_name, url in files:
-                file_req = session.get(url, params={'at': 'refs/heads/master'})
-                file_path = os.path.join('build', 'docs', 'projects',
-                                         project_key, repo_slug)
+    store_docs(docs, session)
 
-                os.makedirs(file_path, exist_ok=True)
 
-                with open(os.path.join(file_path, file_name), 'w') as text_file:
-                    text_file.write(file_req.text)
+if __name__ == '__main__':
+    main()
