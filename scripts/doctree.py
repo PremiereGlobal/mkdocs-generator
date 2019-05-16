@@ -4,6 +4,7 @@ import os
 import re
 import stashy
 import requests
+import threading
 from queue import Queue
 from collections import namedtuple
 from urllib.parse import urlparse, urlunparse, urljoin
@@ -11,6 +12,38 @@ from urllib.parse import urlparse, urlunparse, urljoin
 import markdown
 from markdown.treeprocessors import Treeprocessor
 from markdown.extensions import Extension
+
+
+class Task(dict):
+
+    @classmethod
+    def factory(self, task_type):
+        pass
+
+    def __init__(self, queue):
+        self.queue = queue
+
+    def run(self):
+        raise NotImplementedError()
+
+
+class GetReposTask(Task):
+
+    def run(self):
+        name = self.project.get('name')
+        key = self.project.get('key')
+
+
+class GetFilesTask(Task):
+
+    def __init__(self, repo):
+        pass
+
+
+class ProcessFileTask(Task):
+
+    def __init__(self, doc):
+        pass
 
 
 class FileTree(dict):
@@ -174,6 +207,44 @@ def validate_environment():
             print('{} is not set'.format(key))
             exit(1)
     return tuple(resp)
+
+
+def task_worker(queue):
+
+    def worker():
+        while True:
+            task = queue.get()
+            if task is None:
+                break
+            task.run()
+            queue.task_done()
+
+    return worker
+
+
+def main2(worker_count):
+    bitbucket_url, bitbucket_user, bitbucket_password = validate_environment()
+    stash = stashy.connect(bitbucket_url, bitbucket_user, bitbucket_password)
+
+    session = requests.Session()
+    session.auth = (bitbucket_user, bitbucket_password)
+
+    threads = []
+    task_queue = Queue()
+
+    for i in range(worker_count):
+        worker = task_worker(stash, session)
+        t = threading.Thread(target=worker)
+        t.start()
+        threads.append(t)
+
+    projects = stash.projects.list()
+
+    for project in projects:
+        task = GetReposTask()
+        task.project = project
+
+        task_queue.put(task)
 
 
 def main():
