@@ -1,40 +1,52 @@
 package bitbucket
 
 import (
-  "net/http"
-  "net/url"
-  log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+	"net/http"
+	"net/url"
 )
 
-type BitbucketClient struct {
-  rawClient *http.Client
-  BaseUrl *url.URL
-  BaseApiPath string
-  Username string
-  Password string
-  log *log.Logger
-  limit int
+type BitbucketClientConfig struct {
+
+	// Url is the full url to the Bitbucket instance, for example,
+	// https://bitbucket.mysite.com
+	Url string
+
+	// Username is the username for authenticated instances of Bitbucket
+	Username string
+
+	// Password is the password for authenticated instances of Bitbucket
+	Password string
 }
 
-func NewBitbucketClient(baseUrl string, username string, password string) (*BitbucketClient, error) {
+// BitbucketClient is the main
+type BitbucketClient struct {
+	rawClient   *http.Client
+	config      *BitbucketClientConfig
+	BaseUrl     *url.URL
+	BaseApiPath string
+	log         *log.Logger
+	limit       int
+}
 
-  u, err := url.Parse(baseUrl)
-  if err != nil {
-    return nil, err
-  }
+func NewBitbucketClient(config *BitbucketClientConfig) (*BitbucketClient, error) {
 
-  client := &BitbucketClient{
-    rawClient: &http.Client{},
-    BaseUrl: u,
-    BaseApiPath: "/rest/api/1.0",
-    Username: username,
-    Password: password,
-    limit: 1000,
-  }
+	baseUrl, err := url.Parse(config.Url)
+	if err != nil {
+		return nil, err
+	}
 
-  return client, nil
+	client := &BitbucketClient{
+		rawClient:   &http.Client{},
+		config:      config,
+		BaseUrl:     baseUrl,
+		BaseApiPath: "/rest/api/1.0",
+		limit:       1000,
+	}
+
+	return client, nil
 }
 
 func (b *BitbucketClient) SetLogger(log *log.Logger) {
-  b.log = log
+	b.log = log
 }

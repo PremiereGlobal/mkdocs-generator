@@ -15,13 +15,10 @@ func (r repoTask) run(workerNum int) bool {
 	// Decrement waitgroup counter when we're done
 	defer wg.Done()
 
-	log.Info("Processing repo task ", r.repo.MakePath(), " [repo-worker:", workerNum, "]")
+	log.Info("Processing repo task ", r.repo.MakePath(), " [worker:", workerNum, "]")
 
-	// Create new connection to Bitbucket
-	bb, err := bitbucket.NewBitbucketClient(config.bitbucketUrl, config.bitbucketUser, config.bitbucketPassword)
-	if err != nil {
-		log.Fatal(err)
-	}
+  // Create new Bitbucket client
+	bb := NewBitbucketClient()
 
 	// Paths to browse for markdown
 	browsePaths := []string{"/", "/docs"}
@@ -54,7 +51,7 @@ func (r repoTask) run(workerNum int) bool {
 
 				// Add a count to the waitgroup and add the task to the queue
 				wg.Add(1)
-				fileChan <- task
+				taskChan <- task
 
 			}
 		}

@@ -21,9 +21,10 @@ var wg sync.WaitGroup
 // We create a channel for each type of workload because don't want to block.
 // For example, files not being able to be processed because the work queue is
 // full of repos
-var projectChan chan task
-var repoChan chan task
-var fileChan chan task
+// var projectChan chan task
+var taskChan chan task
+// var repoChan chan task
+// var fileChan chan task
 
 // generateConfig is our configuration type
 type generateConfig struct {
@@ -57,30 +58,21 @@ func generate() {
 
 	// Create our channels that will buffer up to x tasks at a time
 	// The buffer needs to be big enough so that one repo/file cannot fill it up
-	projectChan = make(chan task, 1) // This can be anything
-	repoChan = make(chan task, 20)   // This should be > the most repos in a project
-	fileChan = make(chan task, 100)  // This should be > the most links in a md file
+	taskChan = make(chan task, 1000)
 
 	// Start the workers
-	projectworkerCount := 5
-	for i := 0; i < projectworkerCount; i++ {
-		go worker(i, projectChan)
-	}
-	repoWorkerCount := 20
-	for i := 0; i < repoWorkerCount; i++ {
-		go worker(i, repoChan)
-	}
-	fileWorkerCount := 40
-	for i := 0; i < fileWorkerCount; i++ {
-		go worker(i, fileChan)
+	workerCount := 200
+	for i := 0; i < workerCount; i++ {
+		go worker(i, taskChan)
 	}
 
 	// We add one to the waitgroup intitially because we want to make sure we block`
 	// until we get through adding all the project tasks to the queue
 	wg.Add(1)
 
+  bb := NewBitbucketClient()
+
 	// Get the list of projects
-	bb, err := bitbucket.NewBitbucketClient(config.bitbucketUrl, config.bitbucketUser, config.bitbucketPassword)
 	projects, err := bb.ListProjects()
 	if err != nil {
 		log.Fatal("Unable to list projects: ", err)
@@ -93,7 +85,7 @@ func generate() {
 
 		// Add a count to the waitgroup and add the task to the queue
 		wg.Add(1)
-		projectChan <- task
+		taskChan <- task
 	}
 
 	// We're done adding all the projects, so remove our main blocker so that
@@ -102,6 +94,22 @@ func generate() {
 
 	// Now wait for all the tasks to finish
 	wg.Wait()
+}
+
+func NewBitbucketClient() (*bitbucket.BitbucketClient) {
+
+  bbConfig := bitbucket.BitbucketClientConfig{
+    Url: config.bitbucketUrl,
+  	Username: config.bitbucketUser,
+  	Password: config.bitbucketPassword,
+  }
+
+  client, err := bitbucket.NewBitbucketClient(&bbConfig)
+  if err != nil {
+		log.Fatal("Unable to create Bitbucket client ", err)
+	}
+
+  return client
 }
 
 // ensureBuildDir ensures that the build directory exists, is a directory and

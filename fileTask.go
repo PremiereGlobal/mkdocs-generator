@@ -1,7 +1,6 @@
 package main
 
 import (
-	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 	md "gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
 	"net/url"
@@ -23,13 +22,10 @@ func (f fileTask) run(workerNum int) bool {
 	// Decrement waitgroup counter when we're done
 	defer wg.Done()
 
-	log.Debug("Processing file task ", f.masterFilePath, " [file-worker:", workerNum, "]")
+	log.Debug("Processing file task ", f.masterFilePath, " [worker:", workerNum, "]")
 
 	// Create new Bitbucket client
-	bb, err := bitbucket.NewBitbucketClient(config.bitbucketUrl, config.bitbucketUser, config.bitbucketPassword)
-	if err != nil {
-		log.Fatal(err)
-	}
+	bb := NewBitbucketClient()
 
 	// If the file is refrenced by the /browse/ path, we need to convert this
 	// to "raw" for downloading
@@ -140,7 +136,7 @@ func processMarkdownNode(node *md.Node, entering bool, sourceMasterFilePath stri
 
 					// Add a count to the waitgroup and add the task to the queue
 					wg.Add(1)
-					fileChan <- task
+					taskChan <- task
 
 				}
 			}

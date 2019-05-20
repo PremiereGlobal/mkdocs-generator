@@ -13,13 +13,10 @@ func (p projectTask) run(workerNum int) bool {
 	// Decrement waitgroup counter when we're done
 	defer wg.Done()
 
-	log.Info("Processing project task ", p.project.MakePath(), " [project-worker:", workerNum, "]")
+	log.Info("Processing project task ", p.project.MakePath(), " [worker:", workerNum, "]")
 
-	// Create new Bitbucket client
-	bb, err := bitbucket.NewBitbucketClient(config.bitbucketUrl, config.bitbucketUser, config.bitbucketPassword)
-	if err != nil {
-		log.Fatal(err)
-	}
+  // Create new Bitbucket client
+	bb := NewBitbucketClient()
 
 	// Get the list of repos in this project
 	repos, err := bb.ListRepos(p.project)
@@ -35,7 +32,7 @@ func (p projectTask) run(workerNum int) bool {
 
 		// Add a count to the waitgroup and add the task to the queue
 		wg.Add(1)
-		repoChan <- task
+		taskChan <- task
 
 	}
 	return true
