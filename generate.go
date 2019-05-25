@@ -2,7 +2,6 @@ package main
 
 import (
 	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
-	// "os"
 	"sync"
 )
 
@@ -23,6 +22,7 @@ var wg sync.WaitGroup
 // full of repos
 // var projectChan chan task
 var taskChan chan task
+
 // var repoChan chan task
 // var fileChan chan task
 
@@ -58,7 +58,7 @@ func generate() {
 
 	// Create our channels that will buffer up to x tasks at a time
 	// The buffer needs to be big enough so that one repo/file cannot fill it up
-	taskChan = make(chan task, 1000)
+	taskChan = make(chan task, 2000)
 
 	// Start the workers
 	workerCount := 200
@@ -70,7 +70,7 @@ func generate() {
 	// until we get through adding all the project tasks to the queue
 	wg.Add(1)
 
-  bb := NewBitbucketClient()
+	bb := NewBitbucketClient()
 
 	// Get the list of projects
 	projects, err := bb.ListProjects()
@@ -80,12 +80,14 @@ func generate() {
 
 	// Loop through the projects and add a project task to the queue
 	for _, p := range projects.Values {
-		taskProject := p
-		task := projectTask{project: &taskProject}
+		if p.Key == "SRE" {
+			taskProject := p
+			task := projectTask{project: &taskProject}
 
-		// Add a count to the waitgroup and add the task to the queue
-		wg.Add(1)
-		taskChan <- task
+			// Add a count to the waitgroup and add the task to the queue
+			wg.Add(1)
+			taskChan <- task
+		}
 	}
 
 	// We're done adding all the projects, so remove our main blocker so that
@@ -94,22 +96,29 @@ func generate() {
 
 	// Now wait for all the tasks to finish
 	wg.Wait()
+
+	// If user provided mkdocs file and key, make the nav
+	mkdocsFilePath := Args.GetString("mkdocs-file")
+	mkdocsKey := Args.GetString("mkdocs-key")
+	if mkdocsFilePath != "" && mkdocsKey != "" {
+		makeNav(mkdocsFilePath, mkdocsKey)
+	}
 }
 
-func NewBitbucketClient() (*bitbucket.BitbucketClient) {
+func NewBitbucketClient() *bitbucket.BitbucketClient {
 
-  bbConfig := bitbucket.BitbucketClientConfig{
-    Url: config.bitbucketUrl,
-  	Username: config.bitbucketUser,
-  	Password: config.bitbucketPassword,
-  }
+	bbConfig := bitbucket.BitbucketClientConfig{
+		Url:      config.bitbucketUrl,
+		Username: config.bitbucketUser,
+		Password: config.bitbucketPassword,
+	}
 
-  client, err := bitbucket.NewBitbucketClient(&bbConfig)
-  if err != nil {
+	client, err := bitbucket.NewBitbucketClient(&bbConfig)
+	if err != nil {
 		log.Fatal("Unable to create Bitbucket client ", err)
 	}
 
-  return client
+	return client
 }
 
 // ensureBuildDir ensures that the build directory exists, is a directory and

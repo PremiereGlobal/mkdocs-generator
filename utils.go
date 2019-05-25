@@ -62,6 +62,14 @@ func IsDirectory(path string) (bool, error) {
 	return fileInfo.IsDir(), err
 }
 
+func IsRegularFile(path string) (bool, error) {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	return fileInfo.Mode().IsRegular(), err
+}
+
 // PathExists return true if the file/directory exists
 func PathExists(path string) (bool, error) {
 

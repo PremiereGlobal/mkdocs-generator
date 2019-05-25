@@ -1,4 +1,6 @@
+build
 test
+test/build
 __pycache__
 build
 .DS_Store

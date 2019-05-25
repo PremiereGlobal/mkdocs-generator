@@ -7,7 +7,14 @@ import (
 // log holds our main logger instance
 var log *logrus.Logger
 
+// App version
+var version string
+
 func main() {
+
+	if version == "" {
+		version = "local"
+	}
 
 	log = logrus.New()
 	initCmd()

@@ -7,6 +7,7 @@ replace github.com/PremiereGlobal/mkdocs-generator => ./
 replace gopkg.in/russross/blackfriday.v2 => github.com/russross/blackfriday v2.0.0+incompatible
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible // indirect
 	github.com/ktrysmt/go-bitbucket v0.4.1 // indirect
@@ -18,4 +19,5 @@ require (
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204 // indirect
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a // indirect
 	gopkg.in/russross/blackfriday.v2 v2.0.0-00010101000000-000000000000
+	gopkg.in/yaml.v2 v2.2.2
 )

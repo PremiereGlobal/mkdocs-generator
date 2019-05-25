@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"strings"
 )
 
 // Args contains any arguments to the program
@@ -31,11 +33,29 @@ var generateCmd = &cobra.Command{
 	},
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version",
+	Long:  `All software has versions.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("mkdocs-generator/%s", version)
+		fmt.Println("")
+	},
+}
+
 func initCmd() {
 
 	cobra.OnInitialize(initConfig)
 
 	Args = viper.New()
+
+	// All command line arguments can be set via environment variables in the form
+	// of MG_<command line arg> with dashes replace by underscores.  For example,
+	// MG_LOG_LEVEL=debug will set the log level
+	Args.SetEnvPrefix("MG")
+	Args.AutomaticEnv()
+	replacer := strings.NewReplacer("-", "_")
+	Args.SetEnvKeyReplacer(replacer)
 
 	rootCmd.PersistentFlags().StringP("log-level", "v", "info", "Log Level (\"fatal\",\"warn\",\"info\",\"debug\")")
 	Args.BindPFlag("log-level", rootCmd.PersistentFlags().Lookup("log-level"))
@@ -48,8 +68,13 @@ func initCmd() {
 	Args.BindPFlag("bitbucket-password", generateCmd.Flags().Lookup("bitbucket-password"))
 	generateCmd.Flags().StringP("build-dir", "d", "build/docs", "The directory to build out the markdown structure")
 	Args.BindPFlag("build-dir", generateCmd.Flags().Lookup("build-dir"))
+	generateCmd.Flags().StringP("mkdocs-file", "m", "", "Path to the mkdocs.yml file (for updating nav)")
+	Args.BindPFlag("mkdocs-file", generateCmd.Flags().Lookup("mkdocs-file"))
+	generateCmd.Flags().StringP("mkdocs-key", "k", "nav.Projects", "The mkdocs.yml path to write the project structure (--mkdocs-file must also be set)")
+	Args.BindPFlag("mkdocs-key", generateCmd.Flags().Lookup("mkdocs-key"))
 
 	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func initConfig() {
