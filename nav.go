@@ -1,12 +1,14 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
 	"github.com/davecgh/go-spew/spew"
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	// "reflect"
 	"strings"
+  "fmt"
 )
 
 func makeNav(mkdocsFilePath string, mkdocsKey string) {
@@ -24,202 +26,53 @@ func makeNav(mkdocsFilePath string, mkdocsKey string) {
 		log.Fatal("mkdocs file not valid yaml: ", err)
 	}
 
-	spew.Dump(mkdocs)
+	// var positionHolder []interface{}
 
-	// tree := make(map[string]interface{})
-	// tree := makeKey("key1", nil, mkdocs)
-	// tree2 := makeKey("key2", nil, tree)
-	// tree3 := makeKey("key3", nil, tree2)
-	// p := makeKey("key1", &mkdocs)
-	// p = makeKey("key2", &p)
-
-	var positionHolder interface{}
-	// positionHolder = mkdocs
-	positionHolder = makeKey("nav", nil, mkdocs)
+	// Make the root "nav" key if it doesn't exist
+	// positionHolder = makeKey("nav", mkdocs["nav"])
+  // positionHolder = append(positionHolder.([]interface{}), "test")
+  // spew.Dump(mkdocs)
+  // positionHolder = mkdocs["nav"].([]interface{})
+  // x = mkdocs
+  // spew.Dump(&x)
+  // spew.Dump(&mkdocs["nav"])
+  // mkdocs["nav"] = addNavItemToPath("test", []string{"test1"}, mkdocs["nav"].([]interface{}))
+  // mkdocs["nav"] = append(positionHolder, "test")
+	// Split the desired key path into its parts
 	keyParts := strings.Split(mkdocsKey, ".")
-	for _, k := range keyParts {
-		positionHolder = makeKey(k, nil, positionHolder)
-		fmt.Println()
-		spew.Dump(positionHolder)
-		fmt.Println()
-		// if i == len(keyParts)-1 {
-		// 	rootNavKey = k
-		// } else {
-		// 	mkdocsPointer = final(k, mkdocsPointer)
-		// 	// final(k, &foo)
-		// }
+  testMap := make(map[interface{}]interface{})
+  testMap["nav"] = "test"
+
+	rootNavKey := ""
+	for i, k := range keyParts {
+		if i == len(keyParts)-1 {
+			rootNavKey = k
+		} else {
+			// positionHolder = makeKey(k, positionHolder)
+      // spew.Dump(positionHolder)
+      fmt.Println()
+		}
 	}
 
-	spew.Dump(mkdocs)
+  // spew.Dump(positionHolder)
 
-	// Get the item in the path that we want
 
-	mkdocsPointer := make(map[interface{}]interface{})
 
-	// mkdocsPointer = mkdocs
-	rootNavKey := ""
-
-	// navRoot := mkdocs["nav"]
-
-	// foo := navRoot
-
-	// spew.Dump(foo)
-	// x, _ := navRoot.([]interface{})
-	//     element := navAddElement("test", &navRoot)
-	//     element["test"] = "foo"
-	//
-	//
-	//     // element2 := getNavElement("Projects", &navRoot)
-	//     // g := element2.([]interface {})
-	//     // g[0] = "bar"
-	//     // element2 = "foo2"
-	//
-	//     element3 := getNavElement("test1", &navRoot)
-	//     // h := element3.(map[interface{}]interface{})
-	//     element3["asdf"] = "asdf"
-	//
-	//     navRoot = append(navRoot.([]interface{}), "blah")
-	//
-	// fmt.Println()
-	// fmt.Println()
-	// fmt.Println()
-
-	// mkdocs["nav"] = navRoot
-	// spew.Dump(mkdocs)
-
-	// xmkdocsPointer := mkdocs["nav"]
-	// var navPointer interface{}
-	// navPointer = mkdocs["nav"]
-	// g := navPointer
-	//
-	// // Loop through our keyParts (strings) and ensure they exist
-	// for _, k := range keyParts {
-	//
-	//   // Ensure this part of the tree is in the right format
-	//   element, ok := g.([]interface{})
-	//   if !ok {
-	//     log.Warn("mkdocs file located at ", mkdocsFilePath, " is in a bad format")
-	//     continue
-	//   }
-	//
-	//   // Loop through the elements in this position and see if we already have our
-	//   // key
-	//   found := false
-	//
-	//   // Here we're looping through each ???
-	//   for _, y := range element {
-	//
-	//     foo := y.(map[interface {}]interface {})
-	//     for z := range foo {
-	//       // If the key is the one we're looking for, link and continue
-	//       key := z.(string)
-	//       if key == k {
-	//         log.Debug("Found existing key part in mkdocs ", k)
-	//         found = true
-	//       }
-	//     }
-	//   }
-	//
-	//   if !found {
-	//     log.Debug("Didn't find key part in mkdocs ", k, " creating")
-	//
-	//     // Slice that will hold our maps
-	//     // var q []interface{}
-	//     // q = make([]interface{}, 1)
-	//     //
-	//     var newMap map[interface {}]interface {}
-	//     // newMap = make(map[interface {}]interface {})
-	//     // newMap[k] = make([]interface {}, 1)
-	//     // var newElement map[interface {}]interface {}
-	//     //
-	//     //
-	//     //
-	//     // w := make(map[interface {}]interface {})
-	//     // w[k] = q
-	//
-	//
-	//
-	//     // newElement = make(map[interface {}]interface {})
-	//     // newElement[k] = c
-	//     // b := make([]interface{}, 1)
-	//     // b[0] = make(map[interface {}]interface {})
-	//     // newElement[k] = b
-	//
-	//     // spew.Dump(newMap)
-	//
-	//     element = append(element, newMap)
-	//     g = newMap[k]
-	//     // navPointer = append(navPointer.([]interface{}), newMap)
-	//     // navPointer = x
-	//     // spew.Dump(navPointer)
-	//     // Set our nav pointer to point to the newly added element
-	//     // navPointer = newElement[k]
-	//   }
-	//
-	//   // spew.Dump("")
-	//   // spew.Dump(mkdocs)
-	//
-	//
-	//   // element := make(map[string]interface{})
-	//   //
-	//   // generateNav(name string, children interface{}, nav map[string]interface{})
-	//   //
-	//   // // Ensure this element is of the right type
-	//   // switch c := xmkdocsPointer.(type) {
-	//   //   case []map[string]interface{} :
-	//   //   // good
-	//   //     log.Fatal("good", c)
-	//   //   default:
-	//   //   // bad
-	//   //     log.Fatal("bad", c)
-	//   //     // log.Fatal("mkdocs file located at ", mkdocsFilePath, " in a bad format")
-	//   // }
-	//
-	//   // generateNav(v, nil, xmkdocsPointer.(map[string]interface{}))
-	//   // _, okExists := mkdocsPointer[v]
-	//   // if i == len(keyParts) - 1 {
-	//   //   rootNavKey = v
-	//   // } else {
-	//   //
-	//   //   if !okExists {
-	//   //     log.Debug("Nav item ", v, " doesn't exist or isn't the right type, overwriting")
-	//   //     mkdocsPointer[v] = make(map[string]interface{})
-	//   //   }
-	//   //   nextItem := mkdocsPointer[v].(map[string]interface{})
-	//   //   mkdocsPointer = nextItem
-	//   // }
-	// }
-	//
-	//
-	// mkdocs["nav"] = navPointer
-	// spew.Dump(mkdocs)
-
-	// var rootNav map[string]interface{}
-	// rootNav = make(map[string]interface{})
-	navMap := make(map[string]interface{})
+	navMap := make(map[interface{}]interface{})
 	masterFileList.Range(func(key, value interface{}) bool {
 		return generateNavMap(navMap, key.(string))
 	})
-	// spew.Dump(navMap)
+	//
 	// Finally, loop through and make the project items into arrays
 	// var generatedArrayNav map[string][]map[string]interface{}
 	// generatedArrayNav := make(map[string][]map[string]interface{})
-	nav := make(map[string]interface{})
-	// generatedArrayNav["start"] =
-	// i := 0
-
+	nav := make(map[interface{}]interface{})
 	generateNav(rootNavKey, navMap, nav)
-	// for k, _ := range generatedNav {
-	//   // generatedArrayNav[0] = make(m)
-	//   generateArrayNav(item map[string]interface, depth int)
-	//   generatedArrayNav = append(generatedArrayNav, k)
-	//   // i += 1
-	// }
 
-	// spew.Dump(nav)
-	// spew.Dump(nav)
-	mkdocsPointer[rootNavKey] = nav[rootNavKey]
-	// spew.Dump(nav[rootNavKey])
+  mkdocs["nav"] = addNavItemToPath(nav, keyParts, mkdocs["nav"].([]interface{}))
+  spew.Dump(mkdocs)
+
+	// positionHolder.(map[interface{}]interface{})[rootNavKey] = nav[rootNavKey]
 	navData, err := yaml.Marshal(mkdocs)
 	if err != nil {
 		log.Fatal("Unable to generate mkdocs file: ", err)
@@ -232,70 +85,211 @@ func makeNav(mkdocsFilePath string, mkdocsKey string) {
 	}
 }
 
+
+// Add the item to the given path with source as the existing structure
+func addNavItemToPath(item map[interface{}]interface{}, path []string, source []interface{}) []interface{} {
+
+  // Pop item off path
+  pathPart, newPath := path[0], path[1:]
+
+  log.Info("Adding item to ", pathPart)
+
+  var newSource []interface{}
+  var result []interface{}
+
+  // Exit condition
+  // if len(newPath) > 0 {
+
+    var newMap map[interface{}][]interface{}
+
+    // See if the pathPart exists in the current source
+    found := false
+    // sourceIndex := 0
+    for i, v := range source {
+      switch t := v.(type) {
+      case map[interface{}]interface{}:
+        for j, k := range t {
+          // log.Info("Here's the nav item in position ", i, ": ", j.(string))
+          if j.(string) == pathPart {
+
+            // newMap := v
+
+            log.Debug("Nav key '", pathPart, "' exists already in index ", i)
+            found = true
+            result = source
+            if len(newPath) > 0 {
+              newMap := t
+              newMap[j] = addNavItemToPath(item, newPath, k.([]interface{}))
+              result[i] = newMap
+            } else {
+              log.Warn("Replacing existing navigation key '", pathPart, "' with mkdocs structure")
+              log.Debug("Adding mkdocs structure to '", pathPart, "'")
+
+              // // Last condition returns the item we're adding
+              // newMap = make(map[interface{}][]interface{})
+              // newMap[pathPart] =
+              // result = append(source, newMap)
+              //
+              //
+              // result = make([]interface{}, 1)
+              // result[0] = item
+              result[i] = item
+
+            }
+
+          }
+        }
+      default:
+        log.Warn("Nav index ", i, " is the wrong type")
+      }
+    }
+
+    // If we didn't find the key, make a new one
+    if !found {
+
+      if len(newPath) > 0 {
+        newMap = make(map[interface{}][]interface{})
+        newMap[pathPart] = addNavItemToPath(item, newPath, newSource)
+        result = append(source, newMap)
+      } else {
+        log.Debug("Adding mkdocs structure to '", pathPart, "'")
+
+        // Last condition returns the item we're adding
+        // newMap = item
+        result = append(source, item)
+
+        // result = make([]interface{}, 1)
+        // result[0] = item
+      }
+    }
+
+  // } else {
+
+    // if len(source) > 0 {
+    //   log.Warn("Replacing existing navigation key '", pathPart, "' with mkdocs structure")
+    // }
+    //
+    // log.Debug("Adding mkdocs structure to '", pathPart, "'")
+    //
+    // // Last condition returns the item we're adding
+    // newMap = make(map[interface{}][]interface{})
+    // newMap[pathPart] =
+    // result = append(source, newMap)
+    //
+    //
+    // result = make([]interface{}, 1)
+    // result[0] = item
+  // }
+
+  return result
+}
+
 // Take in a map`
 // Add the key to a map
 // The value is a new []map[string]interface{}
-func makeKey(name string, value interface{}, source interface{}) interface{} {
+func makeKey(name string, source []interface{}) []interface{} {
 
-	newMap := make(map[string]interface{})
-	newSlice := make([]map[string]interface{}, 1)
-	newSlice[0] = newMap
+  var newMap map[interface{}][]interface{}
+	newMap = make(map[interface{}][]interface{})
+	// newSlice := make([]map[interface{}]interface{}, 1)
+  var newSlice []interface{}
+  // newSlice[0] = make(map[interface{}]interface{})
+  newMap[name] = newSlice
 
-	switch s := source.(type) {
-	case map[interface{}]interface{}:
-		s[name] = newSlice
-		// return s[name][0]
-	case map[string]interface{}:
-		s[name] = newSlice
-		switch t := s[name].(type) {
-		case []map[string]interface{}:
-			return t[0]
-		}
-	}
+	// switch s := source.(type) {
+
+	// This case statement should match all maps under, but not including, the
+	// root level "nav" key
+	// case map[interface{}]interface{}:
+	// 	if _, ok := s[name]; ok {
+	// 		log.Info("key ", name, " exists already")
+	// 		switch t := s[name].(type) {
+	// 		case []interface{}:
+	// 			log.Info("Adding item to ", name)
+	// 			t = append(t, newMap)
+	// 			return newMap
+	// 		default:
+	// 			log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
+	// 		}
+	// 	}
+	// 	s[name] = newSlice
+	// 	switch t := s[name].(type) {
+	// 	case []map[interface{}]interface{}:
+	// 		return t[0]
+	// 	}
+
+
+  // case []interface{}:
+    // spew.Dump(s)
+    found := false
+    for i, v := range source {
+      switch t := v.(type) {
+			case map[interface{}]interface{}:
+        for j, _ := range t {
+          log.Info("Here's a nav item in position ", i, ": ", j.(string))
+          if j.(string) == name {
+            log.Info("slice key ", name, " exists already")
+            found = true
+          }
+        }
+		  default:
+		    log.Warn("index ", i, " is the wrong type")
+			}
+    }
+
+    if !found {
+
+     source = append(source, newMap)
+     // spew.Dump(s)
+     // fmt.Println()
+     // b := newMap[name]
+     return newMap[name]
+     // return
+
+    }
+
+		// This case statement is only for the root level "nav" key, all other keys
+		// under "nav" should be map[interface{}]interface{}
+	// case map[string]interface{}:
+	// 	// See if the key already exists
+	// 	if _, ok := s[name]; ok {
+  //     log.Info("key ", name, " exists already")
+  //     switch s[name].(type) {
+	// 		case []interface{}:
+	// 			return s[name]
+  //
+	// 		// return s[name]
+  //
+	// 		// switch t := s[name].(type) {
+	// 		//   case []interface{}:
+	// 		//     log.Info("Adding item to ", name)
+	// 		//     t = append(t, newMap)
+	// 		//     spew.Dump(t)
+	// 		//     return t[len(t)-1]
+	// 		  default:
+	// 		    log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
+	// 		}
+	// 	} else {
+	// 		s[name] = newSlice
+	// 	}
+	// 	switch t := s[name].(type) {
+	// 	case []map[interface{}]interface{}:
+	// 		return t[0]
+	// 	case []interface{}:
+	// 		return t[0]
+	// 	default:
+	// 		log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
+	// 	}
+  // default:
+  //   log.Fatal("Wrong type adding ", name, ": ", reflect.TypeOf(s))
+	// }
 
 	return nil
 }
 
-func makeIndex(source interface{}) interface{} {
-	switch s := source.(type) {
-	case []interface{}:
-		item := make(map[interface{}]interface{})
-		s = append(s, item)
-		return item[len(s)-1]
-	}
+func generateNavMap(rootNav map[interface{}]interface{}, filePath string) bool {
 
-	return nil
-}
-
-// navAddElement adds an element ot the nav
-func navAddElement(name string, nav *interface{}) map[interface{}]interface{} {
-
-	element := make(map[interface{}]interface{})
-
-	b := *nav
-	*nav = append(b.([]interface{}), element)
-
-	return element
-
-}
-
-func final(name string, nav map[interface{}]interface{}) map[interface{}]interface{} {
-
-	if _, ok := nav[name]; !ok {
-		x := make([]map[interface{}]interface{}, 1)
-		x[0] = make(map[interface{}]interface{})
-
-		// nav[name] =
-		return x[0]
-	}
-
-	return nil
-
-}
-
-func generateNavMap(rootNav map[string]interface{}, filePath string) bool {
-
-	var currentNav map[string]interface{}
+	var currentNav map[interface{}]interface{}
 	currentNav = rootNav
 
 	parts := strings.Split(filePath, string(os.PathSeparator))
@@ -308,9 +302,9 @@ func generateNavMap(rootNav map[string]interface{}, filePath string) bool {
 				currentNav[p] = p
 			} else {
 				if _, ok := currentNav[p]; !ok {
-					currentNav[p] = make(map[string]interface{})
+					currentNav[p] = make(map[interface{}]interface{})
 				}
-				nextItem := currentNav[p].(map[string]interface{})
+				nextItem := currentNav[p].(map[interface{}]interface{})
 				currentNav = nextItem
 			}
 		}
@@ -319,7 +313,7 @@ func generateNavMap(rootNav map[string]interface{}, filePath string) bool {
 	return true
 }
 
-func generateNav(name string, children interface{}, nav map[string]interface{}) {
+func generateNav(name string, children interface{}, nav map[interface{}]interface{}) {
 
 	// Assert the type of child(ren)
 	switch c := children.(type) {
@@ -328,21 +322,21 @@ func generateNav(name string, children interface{}, nav map[string]interface{}) 
 	case string:
 		nav[name] = c
 
-		// If the child is a map, we've got more children to process
-	case map[string]interface{}:
+	// If the child is a map, we've got more children to process
+	case map[interface{}]interface{}:
 
 		// Make our slice that will hold the child items
-		navChildren := make([]map[string]interface{}, len(c))
+		navChildren := make([]map[interface{}]interface{}, len(c))
 
 		j := 0
 		// Loop through each child
 		for k, v := range c {
 
 			// Make our map that will hold any items the child has
-			childItems := make(map[string]interface{})
+			childItems := make(map[interface{}]interface{})
 
 			// Generate the nav for the child item
-			generateNav(k, v, childItems)
+			generateNav(k.(string), v, childItems)
 
 			// Add the processed child to the slice
 			navChildren[j] = childItems
