@@ -15,7 +15,7 @@ func (p projectTask) run(workerNum int) bool {
 
 	log.Info("Processing project task ", p.project.MakePath(), " [worker:", workerNum, "]")
 
-  // Create new Bitbucket client
+	// Create new Bitbucket client
 	bb := NewBitbucketClient()
 
 	// Get the list of repos in this project

@@ -7,7 +7,6 @@ import (
 // log holds our main logger instance
 var log *logrus.Logger
 
-// App version
 var version string
 
 func main() {

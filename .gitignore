@@ -1,6 +1,5 @@
 build
-test
-test/build
+html
 __pycache__
-build
 .DS_Store
+mkdocs.yml

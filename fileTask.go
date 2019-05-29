@@ -4,46 +4,38 @@ import (
 	md "gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
+// fileTask is a type of task that downloads and processes documents
 type fileTask struct {
 
-	// Filetype should be "markdown" or "image"
-	fileType string
+	// document contains the document we want to process
+	document *document
 
-	masterFilePath string
+	// referencedBy is the document that referenced this file
+	// Is only applicable for documents referenced by other documents
+	referencedBy *document
 }
 
+// run describes how a fileTask should be processed
 func (f fileTask) run(workerNum int) bool {
 
 	// Decrement waitgroup counter when we're done
 	defer wg.Done()
 
-	log.Debug("Processing file task ", f.masterFilePath, " [worker:", workerNum, "]")
+	log.Debug("Processing file task ", f.document.uid, " [worker:", workerNum, "]")
 
 	// Create new Bitbucket client
 	bb := NewBitbucketClient()
 
-	// If the file is refrenced by the /browse/ path, we need to convert this
-	// to "raw" for downloading
-	downloadPath := f.masterFilePath
-	parts := strings.Split(f.masterFilePath, string(os.PathSeparator))
-	if len(parts) >= 6 && parts[4] == "browse" {
-		buildPath := parts[0:4]
-		buildPath = append(buildPath, "raw")
-		buildPath = append(buildPath, parts[5:]...)
-		downloadPath = filepath.Join(buildPath...)
-	}
-
 	// Download and save the file
-	bodyBytes, err := bb.RawByPath(downloadPath, "at=refs/heads/master")
+	bodyBytes, err := bb.RawByPath(f.document.scmFilePath(), "at=refs/heads/master")
 	if err != nil {
-		log.Warn(err)
+		log.Warn("Error downloading file referenced in ", f.referencedBy.uid, ": ", err)
 	} else {
-		filename := filepath.Join(Args.GetString("build-dir"), f.masterFilePath)
+		filename := filepath.Join(Args.GetString("build-dir"), "docs", f.document.scmFilePath())
 		CreateFileIfNotExist(filename)
 		err = ioutil.WriteFile(filename, bodyBytes, 0644)
 		if err != nil {
@@ -53,24 +45,20 @@ func (f fileTask) run(workerNum int) bool {
 
 	// If this file is markdown, parse it to find any more linked resources we
 	// need to download
-	if f.fileType == "markdown" {
+	if f.document.docType == markdownType {
 		markdown := md.New(md.WithExtensions(md.CommonExtensions))
 		parser := markdown.Parse(bodyBytes)
 		parser.Walk(func(node *md.Node, entering bool) md.WalkStatus {
-			return processMarkdownNode(node, entering, f.masterFilePath)
+			return processMarkdownNode(node, entering, f.document)
 		})
 	}
 
 	return false
 }
 
-type task interface {
-	run(int) bool
-}
-
 // processMarkdownNode processes the markdown item. If we find a link or an image
 // and it hasn't already been processed, add it to the file queue
-func processMarkdownNode(node *md.Node, entering bool, sourceMasterFilePath string) md.WalkStatus {
+func processMarkdownNode(node *md.Node, entering bool, sourceDocument *document) md.WalkStatus {
 
 	// Since this gets called twice, only execute on the entry event
 	if entering == true {
@@ -88,11 +76,11 @@ func processMarkdownNode(node *md.Node, entering bool, sourceMasterFilePath stri
 
 			// Determine what type of file we're dealing with and exit here if it's
 			// not markdown or image
-			fileType := ""
-			if strings.ToLower(filepath.Ext(linkURL.Path)) == ".md" {
-				fileType = "markdown"
+			var docType docType
+			if filepath.Ext(linkURL.Path) == ".md" {
+				docType = markdownType
 			} else if node.Type == md.Image {
-				fileType = "image"
+				docType = imageType
 			} else {
 				return md.GoToNext
 			}
@@ -117,22 +105,27 @@ func processMarkdownNode(node *md.Node, entering bool, sourceMasterFilePath stri
 
 					// Path is relative, use the masterFilePath directory to generate
 					// the master file path for the reference file
-					sourcePath := filepath.Dir(sourceMasterFilePath)
+					sourcePath := filepath.Dir(sourceDocument.scmFilePath())
 					referenceMasterFilePath = filepath.Join(sourcePath, linkURL.Path)
+
 				}
 
-				// Check if the file is on the master list, if not, add it
-				if _, ok := masterFileList.Load(strings.ToLower(referenceMasterFilePath)); !ok {
+				// Generate the document object for this file
+				document, err := NewDocumentFromPath(referenceMasterFilePath)
+				if err != nil {
+					log.Warn("Bad file reference in ", sourceDocument.uid, ": ", err)
+					return md.GoToNext
+				}
+				document.docType = docType
 
-					// Add the file to the master list, then add it to the queue
-					masterFileList.Store(strings.ToLower(referenceMasterFilePath), true)
-					task := fileTask{
-						fileType:       fileType,
-						masterFilePath: referenceMasterFilePath,
-					}
+				// Check if the file is on the master list, if not, add it
+				if _, ok := masterFileList.Load(document.uid); !ok {
+
+					// Create a task to process this file
+					task := fileTask{document: document, referencedBy: sourceDocument}
 
 					// Add the file to the master list so nothing else processes it
-					masterFileList.Store(strings.ToLower(referenceMasterFilePath), true)
+					masterFileList.Store(document.uid, document)
 
 					// Add a count to the waitgroup and add the task to the queue
 					wg.Add(1)

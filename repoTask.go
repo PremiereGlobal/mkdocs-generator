@@ -3,7 +3,6 @@ package main
 import (
 	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 	"path/filepath"
-	"strings"
 )
 
 type repoTask struct {
@@ -17,7 +16,7 @@ func (r repoTask) run(workerNum int) bool {
 
 	log.Info("Processing repo task ", r.repo.MakePath(), " [worker:", workerNum, "]")
 
-  // Create new Bitbucket client
+	// Create new Bitbucket client
 	bb := NewBitbucketClient()
 
 	// Paths to browse for markdown
@@ -35,19 +34,17 @@ func (r repoTask) run(workerNum int) bool {
 		for _, f := range browseList.Children.Values {
 
 			// If the file is markdown, process it
-			if strings.ToLower(f.Path.Extension) == "md" {
+			if f.Path.Extension == "md" {
 
-				// Generate the master file path for this file
-				masterFilePath := filepath.Join(r.repo.MakePath(), "raw", filepath.Join(browseList.Path.ToString, f.Path.ToString))
+				// Generate the document object for this file
+				document := NewDocument(r.repo.Project.Key, r.repo.Slug, filepath.Join(browseList.Path.ToString, f.Path.ToString))
+				document.docType = markdownType
 
 				// Create a task to process this file
-				task := fileTask{
-					fileType:       "markdown",
-					masterFilePath: masterFilePath,
-				}
+				task := fileTask{document: document}
 
 				// Add the file to the master list so nothing else processes it
-				masterFileList.Store(strings.ToLower(masterFilePath), true)
+				masterFileList.Store(document.uid, document)
 
 				// Add a count to the waitgroup and add the task to the queue
 				wg.Add(1)

@@ -17,9 +17,10 @@ COPY scripts/requirements.txt /scripts/requirements.txt
 
 WORKDIR /scripts
 
+ENV BUILD_DIR="/build"
 ENV MG_BUILD_DIR="/build/docs"
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && mkdir ${BUILD_DIR}
 
 COPY scripts /scripts
 

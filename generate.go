@@ -2,8 +2,14 @@ package main
 
 import (
 	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
+	"path/filepath"
 	"sync"
 )
+
+// task is an arbitrary item that needs to processed
+type task interface {
+	run(int) bool
+}
 
 // masterFileList holds all of the files that have been processed so we don't duplicate
 // Map keys should be in the formats:
@@ -80,14 +86,14 @@ func generate() {
 
 	// Loop through the projects and add a project task to the queue
 	for _, p := range projects.Values {
-		if p.Key == "SRE" {
+
 			taskProject := p
 			task := projectTask{project: &taskProject}
 
 			// Add a count to the waitgroup and add the task to the queue
 			wg.Add(1)
 			taskChan <- task
-		}
+
 	}
 
 	// We're done adding all the projects, so remove our main blocker so that
@@ -97,11 +103,11 @@ func generate() {
 	// Now wait for all the tasks to finish
 	wg.Wait()
 
-	// If user provided mkdocs file and key, make the nav
-	mkdocsFilePath := Args.GetString("mkdocs-file")
+	// If user provided mkdocs directory and key
+	docsDir := Args.GetString("docs-dir")
 	mkdocsKey := Args.GetString("mkdocs-key")
-	if mkdocsFilePath != "" && mkdocsKey != "" {
-		makeNav(mkdocsFilePath, mkdocsKey)
+	if docsDir != "" && mkdocsKey != "" {
+		makeNav(docsDir, mkdocsKey)
 	}
 }
 
@@ -124,7 +130,7 @@ func NewBitbucketClient() *bitbucket.BitbucketClient {
 // ensureBuildDir ensures that the build directory exists, is a directory and
 // is empty, creating it if need be
 func ensureBuildDir() {
-	buildDir := Args.GetString("build-dir")
+	buildDir := filepath.Join(Args.GetString("build-dir"), "docs")
 	if ok, _ := PathExists(buildDir); ok {
 		if ok, _ := IsDirectory(buildDir); !ok {
 			log.Fatal("Build directory path exists and is not a directory")
@@ -134,7 +140,7 @@ func ensureBuildDir() {
 		}
 	} else {
 		log.Debug("Creating build directory ", buildDir)
-		err := CreateDirIfNotExist(Args.GetString("build-dir"))
+		err := CreateDirIfNotExist(buildDir)
 		if err != nil {
 			log.Fatal("Unable to create build directory ", err)
 		}
