@@ -86,14 +86,12 @@ func generate() {
 
 	// Loop through the projects and add a project task to the queue
 	for _, p := range projects.Values {
-
 			taskProject := p
 			task := projectTask{project: &taskProject}
 
 			// Add a count to the waitgroup and add the task to the queue
 			wg.Add(1)
 			taskChan <- task
-
 	}
 
 	// We're done adding all the projects, so remove our main blocker so that
@@ -103,11 +101,10 @@ func generate() {
 	// Now wait for all the tasks to finish
 	wg.Wait()
 
-	// If user provided mkdocs directory and key
+	// If user provided mkdocs directory
 	docsDir := Args.GetString("docs-dir")
-	mkdocsKey := Args.GetString("mkdocs-key")
-	if docsDir != "" && mkdocsKey != "" {
-		makeNav(docsDir, mkdocsKey)
+	if docsDir != "" {
+		makeNav(docsDir)
 	}
 }
 

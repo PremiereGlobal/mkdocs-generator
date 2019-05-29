@@ -70,8 +70,6 @@ func initCmd() {
 	Args.BindPFlag("build-dir", generateCmd.Flags().Lookup("build-dir"))
 	generateCmd.Flags().StringP("docs-dir", "c", "", "Path an existing mkdocs structure (including a mkdocs.yml file)")
 	Args.BindPFlag("docs-dir", generateCmd.Flags().Lookup("docs-dir"))
-	generateCmd.Flags().StringP("mkdocs-key", "k", "Projects", "The mkdocs.yml path to write the project structure (--mkdocs-file must also be set)")
-	Args.BindPFlag("mkdocs-key", generateCmd.Flags().Lookup("mkdocs-key"))
 
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(versionCmd)

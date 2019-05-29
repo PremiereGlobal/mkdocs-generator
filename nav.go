@@ -1,20 +1,20 @@
 package main
 
 import (
-	// "fmt"
-	"github.com/davecgh/go-spew/spew"
+	"fmt"
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
-	// "reflect"
+	"path/filepath"
+	"sort"
 	"strings"
-  "fmt"
+	"time"
 )
 
-func makeNav(mkdocsFilePath string, mkdocsKey string) {
+func makeNav(docsDir string) {
 
 	// Read in the mkdocs file
-	mkdocsContents, err := ioutil.ReadFile(mkdocsFilePath)
+	mkdocsContents, err := ioutil.ReadFile(filepath.Join(docsDir, "mkdocs.yml"))
 	if err != nil {
 		log.Fatal("Unable to open mkdocs file: ", err)
 	}
@@ -26,288 +26,129 @@ func makeNav(mkdocsFilePath string, mkdocsKey string) {
 		log.Fatal("mkdocs file not valid yaml: ", err)
 	}
 
-	// var positionHolder []interface{}
+	// Add the current timestamp to the mkdocs file
+	addTimestamp(mkdocs)
 
-	// Make the root "nav" key if it doesn't exist
-	// positionHolder = makeKey("nav", mkdocs["nav"])
-  // positionHolder = append(positionHolder.([]interface{}), "test")
-  // spew.Dump(mkdocs)
-  // positionHolder = mkdocs["nav"].([]interface{})
-  // x = mkdocs
-  // spew.Dump(&x)
-  // spew.Dump(&mkdocs["nav"])
-  // mkdocs["nav"] = addNavItemToPath("test", []string{"test1"}, mkdocs["nav"].([]interface{}))
-  // mkdocs["nav"] = append(positionHolder, "test")
-	// Split the desired key path into its parts
-	keyParts := strings.Split(mkdocsKey, ".")
-  testMap := make(map[interface{}]interface{})
-  testMap["nav"] = "test"
+	// Creates the project index.md file and adds it to the nav
+	createProjectIndex(mkdocs)
 
-	rootNavKey := ""
-	for i, k := range keyParts {
-		if i == len(keyParts)-1 {
-			rootNavKey = k
-		} else {
-			// positionHolder = makeKey(k, positionHolder)
-      // spew.Dump(positionHolder)
-      fmt.Println()
-		}
-	}
+	// There is absolutely a better way to do these next two steps but this was
+	// the culmination of many iterations of methods and I don't have time
+	// to fix it now
 
-  // spew.Dump(positionHolder)
-
-
-
+	// Generate a nested map of the files
 	navMap := make(map[interface{}]interface{})
 	masterFileList.Range(func(key, value interface{}) bool {
-		return generateNavMap(navMap, key.(string))
+		return generateNavMap(navMap, value.(*document))
 	})
-	//
-	// Finally, loop through and make the project items into arrays
-	// var generatedArrayNav map[string][]map[string]interface{}
-	// generatedArrayNav := make(map[string][]map[string]interface{})
+
+	// Generate the funky slice of map of slices structure that the nav requires
 	nav := make(map[interface{}]interface{})
-	generateNav(rootNavKey, navMap, nav)
+	generateNav("root", navMap, nav)
+	for _, y := range nav["root"].([]map[interface{}]interface{}) {
+		mkdocs["nav"] = append(mkdocs["nav"].([]interface{}), y)
+	}
 
-  mkdocs["nav"] = addNavItemToPath(nav, keyParts, mkdocs["nav"].([]interface{}))
-  spew.Dump(mkdocs)
-
-	// positionHolder.(map[interface{}]interface{})[rootNavKey] = nav[rootNavKey]
+	// Marshal the mkdocs file back to yaml
 	navData, err := yaml.Marshal(mkdocs)
 	if err != nil {
 		log.Fatal("Unable to generate mkdocs file: ", err)
 	}
 
-	// Write the mkdocs file
-	err = ioutil.WriteFile("testmkdocs.yml", navData, 0644)
+	// Write the mkdocs file to the build directory
+	err = ioutil.WriteFile(filepath.Join(Args.GetString("build-dir"), "mkdocs.yml"), navData, 0644)
 	if err != nil {
 		log.Fatal("Unable to write mkdocs file: ", err)
 	}
 }
 
-
 // Add the item to the given path with source as the existing structure
 func addNavItemToPath(item map[interface{}]interface{}, path []string, source []interface{}) []interface{} {
 
-  // Pop item off path
-  pathPart, newPath := path[0], path[1:]
+	// Pop item off path
+	pathPart, newPath := path[0], path[1:]
 
-  log.Info("Adding item to ", pathPart)
+	log.Info("Adding item to ", pathPart)
 
-  var newSource []interface{}
-  var result []interface{}
+	var newSource []interface{}
+	var result []interface{}
+	var newMap map[interface{}][]interface{}
 
-  // Exit condition
-  // if len(newPath) > 0 {
+	// See if the pathPart exists in the current source
+	found := false
+	for i, v := range source {
+		switch t := v.(type) {
+		case map[interface{}]interface{}:
+			for j, k := range t {
+				if j.(string) == pathPart {
+					log.Debug("Nav key '", pathPart, "' exists already in index ", i)
+					found = true
+					result = source
+					if len(newPath) > 0 {
+						newMap := t
+						newMap[j] = addNavItemToPath(item, newPath, k.([]interface{}))
+						result[i] = newMap
+					} else {
+						log.Warn("Replacing existing navigation key '", pathPart, "' with mkdocs structure")
+						log.Debug("Adding mkdocs structure to '", pathPart, "'")
 
-    var newMap map[interface{}][]interface{}
-
-    // See if the pathPart exists in the current source
-    found := false
-    // sourceIndex := 0
-    for i, v := range source {
-      switch t := v.(type) {
-      case map[interface{}]interface{}:
-        for j, k := range t {
-          // log.Info("Here's the nav item in position ", i, ": ", j.(string))
-          if j.(string) == pathPart {
-
-            // newMap := v
-
-            log.Debug("Nav key '", pathPart, "' exists already in index ", i)
-            found = true
-            result = source
-            if len(newPath) > 0 {
-              newMap := t
-              newMap[j] = addNavItemToPath(item, newPath, k.([]interface{}))
-              result[i] = newMap
-            } else {
-              log.Warn("Replacing existing navigation key '", pathPart, "' with mkdocs structure")
-              log.Debug("Adding mkdocs structure to '", pathPart, "'")
-
-              // // Last condition returns the item we're adding
-              // newMap = make(map[interface{}][]interface{})
-              // newMap[pathPart] =
-              // result = append(source, newMap)
-              //
-              //
-              // result = make([]interface{}, 1)
-              // result[0] = item
-              result[i] = item
-
-            }
-
-          }
-        }
-      default:
-        log.Warn("Nav index ", i, " is the wrong type")
-      }
-    }
-
-    // If we didn't find the key, make a new one
-    if !found {
-
-      if len(newPath) > 0 {
-        newMap = make(map[interface{}][]interface{})
-        newMap[pathPart] = addNavItemToPath(item, newPath, newSource)
-        result = append(source, newMap)
-      } else {
-        log.Debug("Adding mkdocs structure to '", pathPart, "'")
-
-        // Last condition returns the item we're adding
-        // newMap = item
-        result = append(source, item)
-
-        // result = make([]interface{}, 1)
-        // result[0] = item
-      }
-    }
-
-  // } else {
-
-    // if len(source) > 0 {
-    //   log.Warn("Replacing existing navigation key '", pathPart, "' with mkdocs structure")
-    // }
-    //
-    // log.Debug("Adding mkdocs structure to '", pathPart, "'")
-    //
-    // // Last condition returns the item we're adding
-    // newMap = make(map[interface{}][]interface{})
-    // newMap[pathPart] =
-    // result = append(source, newMap)
-    //
-    //
-    // result = make([]interface{}, 1)
-    // result[0] = item
-  // }
-
-  return result
-}
-
-// Take in a map`
-// Add the key to a map
-// The value is a new []map[string]interface{}
-func makeKey(name string, source []interface{}) []interface{} {
-
-  var newMap map[interface{}][]interface{}
-	newMap = make(map[interface{}][]interface{})
-	// newSlice := make([]map[interface{}]interface{}, 1)
-  var newSlice []interface{}
-  // newSlice[0] = make(map[interface{}]interface{})
-  newMap[name] = newSlice
-
-	// switch s := source.(type) {
-
-	// This case statement should match all maps under, but not including, the
-	// root level "nav" key
-	// case map[interface{}]interface{}:
-	// 	if _, ok := s[name]; ok {
-	// 		log.Info("key ", name, " exists already")
-	// 		switch t := s[name].(type) {
-	// 		case []interface{}:
-	// 			log.Info("Adding item to ", name)
-	// 			t = append(t, newMap)
-	// 			return newMap
-	// 		default:
-	// 			log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
-	// 		}
-	// 	}
-	// 	s[name] = newSlice
-	// 	switch t := s[name].(type) {
-	// 	case []map[interface{}]interface{}:
-	// 		return t[0]
-	// 	}
-
-
-  // case []interface{}:
-    // spew.Dump(s)
-    found := false
-    for i, v := range source {
-      switch t := v.(type) {
-			case map[interface{}]interface{}:
-        for j, _ := range t {
-          log.Info("Here's a nav item in position ", i, ": ", j.(string))
-          if j.(string) == name {
-            log.Info("slice key ", name, " exists already")
-            found = true
-          }
-        }
-		  default:
-		    log.Warn("index ", i, " is the wrong type")
+						result[i] = item
+					}
+				}
 			}
-    }
+		default:
+			log.Warn("Nav index ", i, " is the wrong type")
+		}
+	}
 
-    if !found {
+	// If we didn't find the key, make a new one
+	if !found {
 
-     source = append(source, newMap)
-     // spew.Dump(s)
-     // fmt.Println()
-     // b := newMap[name]
-     return newMap[name]
-     // return
+		if len(newPath) > 0 {
+			newMap = make(map[interface{}][]interface{})
+			newMap[pathPart] = addNavItemToPath(item, newPath, newSource)
+			result = append(source, newMap)
+		} else {
+			log.Debug("Adding mkdocs structure to '", pathPart, "'")
 
-    }
+			// Last condition returns the item we're adding
+			result = append(source, item)
+		}
+	}
 
-		// This case statement is only for the root level "nav" key, all other keys
-		// under "nav" should be map[interface{}]interface{}
-	// case map[string]interface{}:
-	// 	// See if the key already exists
-	// 	if _, ok := s[name]; ok {
-  //     log.Info("key ", name, " exists already")
-  //     switch s[name].(type) {
-	// 		case []interface{}:
-	// 			return s[name]
-  //
-	// 		// return s[name]
-  //
-	// 		// switch t := s[name].(type) {
-	// 		//   case []interface{}:
-	// 		//     log.Info("Adding item to ", name)
-	// 		//     t = append(t, newMap)
-	// 		//     spew.Dump(t)
-	// 		//     return t[len(t)-1]
-	// 		  default:
-	// 		    log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
-	// 		}
-	// 	} else {
-	// 		s[name] = newSlice
-	// 	}
-	// 	switch t := s[name].(type) {
-	// 	case []map[interface{}]interface{}:
-	// 		return t[0]
-	// 	case []interface{}:
-	// 		return t[0]
-	// 	default:
-	// 		log.Fatal("key ", name, " is the wrong type ", reflect.TypeOf(s[name]))
-	// 	}
-  // default:
-  //   log.Fatal("Wrong type adding ", name, ": ", reflect.TypeOf(s))
-	// }
-
-	return nil
+	return result
 }
 
-func generateNavMap(rootNav map[interface{}]interface{}, filePath string) bool {
+func generateNavMap(rootNav map[interface{}]interface{}, document *document) bool {
 
 	var currentNav map[interface{}]interface{}
 	currentNav = rootNav
+	filePath := document.scmFilePath()
 
 	parts := strings.Split(filePath, string(os.PathSeparator))
 
-	for i, p := range parts {
-
-		// File path should be "/projects/<project>/repos/<repos>/<raw/browse>/filepath..."
-		if i != 0 && i != 2 && i != 4 {
-			if i == len(parts)-1 {
-				currentNav[p] = p
-			} else {
-				if _, ok := currentNav[p]; !ok {
-					currentNav[p] = make(map[interface{}]interface{})
-				}
-				nextItem := currentNav[p].(map[interface{}]interface{})
-				currentNav = nextItem
-			}
+	// if this document is at the root of the project (path length 6), add it
+	if len(parts) == 6 && document.docType == markdownType {
+		repoPath := fmt.Sprintf("%s/%s", parts[1], parts[3])
+		if _, ok := currentNav[repoPath]; !ok {
+			currentNav[repoPath] = make(map[interface{}]interface{})
 		}
+		nextItem := currentNav[repoPath].(map[interface{}]interface{})
+		nextItem[parts[5]] = filePath
+	}
+
+	// if this file is in the docs/ directory, add it
+	if len(parts) == 7 && parts[5] == "docs" && document.docType == markdownType {
+		repoPath := fmt.Sprintf("%s/%s", parts[1], parts[3])
+		if _, ok := currentNav[repoPath]; !ok {
+			currentNav[repoPath] = make(map[interface{}]interface{})
+		}
+		nextItem := currentNav[repoPath].(map[interface{}]interface{})
+		if _, ok := nextItem["docs"]; !ok {
+			nextItem["docs"] = make(map[interface{}]interface{})
+		}
+		nextItem2 := nextItem["docs"].(map[interface{}]interface{})
+		nextItem2[parts[6]] = filePath
 	}
 
 	return true
@@ -326,9 +167,8 @@ func generateNav(name string, children interface{}, nav map[interface{}]interfac
 	case map[interface{}]interface{}:
 
 		// Make our slice that will hold the child items
-		navChildren := make([]map[interface{}]interface{}, len(c))
+		var navChildren []map[interface{}]interface{}
 
-		j := 0
 		// Loop through each child
 		for k, v := range c {
 
@@ -339,13 +179,76 @@ func generateNav(name string, children interface{}, nav map[interface{}]interfac
 			generateNav(k.(string), v, childItems)
 
 			// Add the processed child to the slice
-			navChildren[j] = childItems
-
-			j = j + 1
+			if len(childItems) > 0 {
+				navChildren = append(navChildren, childItems)
+			}
 		}
 
-		// After processing all the children, add it to the nav
-		nav[name] = navChildren
+		// After processing all the children, add it to the nav (if the children exist)
+		if len(navChildren) > 0 {
+			nav[name] = navChildren
+		}
+	}
+}
+
+func createProjectIndex(mkdocs map[string]interface{}) {
+	// This should be done via some sort of markdown library?
+	repoList := make(map[string]map[string]bool)
+	var sb strings.Builder
+	sb.WriteString("# Projects/Repos")
+	sb.WriteString("\n")
+	masterFileList.Range(func(key, value interface{}) bool {
+
+		doc := value.(*document)
+
+		// If the project doesn't exist, add it
+		if _, ok := repoList[doc.project]; !ok {
+			repoList[doc.project] = make(map[string]bool)
+		}
+		repoList[doc.project][doc.repo] = true
+
+		return true
+	})
+
+	keys := make([]string, 0, len(repoList))
+	for k := range repoList {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, projectName := range keys {
+		sb.WriteString(fmt.Sprintf("##%s\n\n", projectName))
+		repoKeys := make([]string, 0, len(repoList[projectName]))
+		for k := range repoList[projectName] {
+			repoKeys = append(repoKeys, k)
+		}
+		sort.Strings(repoKeys)
+		for _, repoName := range repoKeys {
+			sb.WriteString(fmt.Sprintf("[%s](/projects/%s/repos/%s/raw/)\n\n", repoName, projectName, repoName))
+		}
 	}
 
+	// Write the repo index file
+	err := ioutil.WriteFile(filepath.Join(Args.GetString("build-dir"), "docs/projects/index.md"), []byte(sb.String()), 0644)
+	if err != nil {
+		log.Fatal("Unable to write repo index file: ", err)
+	}
+
+	indexNav := make(map[interface{}]interface{})
+	indexNav["Projects"] = "projects/index.md"
+	mkdocs["nav"] = addNavItemToPath(indexNav, []string{"Projects"}, mkdocs["nav"].([]interface{}))
+}
+
+// addTimestamp adds the current time to theme.features.timestamp
+func addTimestamp(mkdocs interface{}) {
+	switch m := mkdocs.(type) {
+	case map[string]interface{}:
+		switch t := m["theme"].(type) {
+		case map[interface{}]interface{}:
+			switch f := t["feature"].(type) {
+			case map[interface{}]interface{}:
+				f["timestamp"] = time.Now().Format(time.RFC3339)
+			}
+		}
+	}
 }
