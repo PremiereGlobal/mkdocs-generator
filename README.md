@@ -1,56 +1,41 @@
 # Mkdocs Generator (for Bitbucket)
 [![Build][Build-Status-Image]][Build-Status-Url]
 
-This project scans an entire bitbucket instance for repositories with documentation and builds a [mkdocs](https://www.mkdocs.org/) website.  The generated HTML is then pushed to a Github repo to be used as an offline documentation source.
-
-##
-
-```
-mkdocs-generator \
-  --bitbucket-url https://bitbucket.mysite.com \
-  --bitbucket-user=<user> \
-  --bitbucket-password=<token> \
-  --log-level info \
-
-```
+This project scans an entire bitbucket instance for repositories with documentation and builds a [mkdocs](https://www.mkdocs.org/) website.
 
 ## Docker
 
-*Example*
-
 ```
 docker run \
-  -e GITHUB_URL=<github_url> \
-  -e GITHUB_USER=<github_user> \
-  -e GITHUB_TOKEN=<github_token> \
-  -e BITBUCKET_URL=<bitbucket_url> \
-  -e BITBUCKET_USER=<bitbucket_user> \
-  -e BITBUCKET_TOKEN=<bitbucket_token> \
+  -e MG_BITBUCKET_URL=<bitbucket_url> \
+  -e MG_BITBUCKET_USER=<bitbucket_user> \
+  -e MG_BITBUCKET_PASSWORD=<bitbucket_token> \
+  -v $(pwd)/docs:/docs \
+  -v $(pwd)/html:/html \
   premiereglobal/mkdocs-generator
 ```
 
-### Docker Volume Mounts
-Two volume mounts should be considered
+### Docker Volumes
+The following default volume mounts should be considered.  These can be changed via the environment variables below.
 
-`/docs` - should have a `mkdocs.yaml` file as well as any top-level markdown files in a subdirectoy named `docs`
-`/html` - will contain the final results
+`/docs` - Directory containing a `mkdocs.yaml` file as well as any top-level markdown files in a subdirectoy named `docs`.
+`/html` - Directory to put the final, rendered html. Any unecessary files will be removed from this directory.
+`/build` - Will contain the mkdocs build directory.  This is mostly used for development and debugging.
 
 ### Docker Environment Variables
 
 To customize some properties of the container, the following environment
-variables can be passed via the `-e` parameter (one for each variable).  Value
-of this parameter has the format `<VARIABLE_NAME>=<VALUE>`.
+variables can be passed via the `-e` parameter (one for each variable).
 
 | Variable       | Description                                  | Default/Required |
 |----------------|----------------------------------------------|---------|
-|`BITBUCKET_URL`| The full address of the instance of Bitbucket to scan. For example `https://bitbucket.mysite.com` | required |
-|`BITBUCKET_USER`| User to use to authenticate against Bitbucket. | required |
-|`BITBUCKET_TOKEN`| Bitbucket user token. | required |
-|`GITHUB_URL`| The Github url of the repo to push the site to (excluding the `https://`).  For example `github.com/myorg/docs` | optional |
-|`GITHUB_USER`| User to use to authenticate against Github | required if `GITHUB_URL` set |
-|`GITHUB_TOKEN`| Github user token | required if `GITHUB_URL` set |
-|`GITHUB_USER_EMAIL`| Email to use in the git config when pushing to Github | required if `GITHUB_URL` set |
-|`GITHUB_BRANCH`| If specified, will push to this Github branch | `master` |
+|`MG_BITBUCKET_URL`| The full address of the instance of Bitbucket to scan. For example `https://bitbucket.mysite.com` | required |
+|`MG_BITBUCKET_USER`| User to use to authenticate against Bitbucket. | required |
+|`MG_BITBUCKET_PASSWORD`| Bitbucket user password or token. | required |
+|`MG_LOG_LEVEL`| Log level.  Can be `debug`, `info` or `warn`. | `info` |
+|`MG_BUILD_DIR`| Build directory | `/build` |
+|`MG_DOCS_DIR`| Directory containing a `mkdocs.yaml` file as well as any top-level markdown files in a subdirectoy named `docs`. See Volumes section above. | `/docs` |
+|`MG_HTML_DIR`| Directory to put the final, rendered html. Any unecessary files will be removed from this directory. See Volumes section above. | `/html` |
 
 [Build-Status-Url]: https://travis-ci.org/PremiereGlobal/mkdocs-generator
 [Build-Status-Image]: https://travis-ci.org/PremiereGlobal/mkdocs-generator.svg?branch=master

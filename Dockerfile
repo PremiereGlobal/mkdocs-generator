@@ -17,6 +17,8 @@ COPY scripts/requirements.txt /scripts/requirements.txt
 
 WORKDIR /scripts
 
+ENV MG_LOG_LEVEL="info"
+ENV MG_DOCS_DIR="/docs"
 ENV MG_BUILD_DIR="/build"
 ENV MG_HTML_DIR="/html"
 
