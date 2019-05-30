@@ -27,7 +27,7 @@ func makeNav(docsDir string) {
 	}
 
 	// Add the current timestamp to the mkdocs file
-	addTimestamp(mkdocs)
+	// addTimestamp(mkdocs)
 
 	// Creates the project index.md file and adds it to the nav
 	createProjectIndex(mkdocs)
