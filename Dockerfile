@@ -17,16 +17,14 @@ COPY scripts/requirements.txt /scripts/requirements.txt
 
 WORKDIR /scripts
 
-ENV BUILD_DIR="/build"
-ENV MG_BUILD_DIR="/build/docs"
+ENV MG_BUILD_DIR="/build"
+ENV MG_HTML_DIR="/html"
 
-RUN pip install --no-cache-dir -r requirements.txt && mkdir ${BUILD_DIR}
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts /scripts
 
 COPY --from=builder /src/bin/mkdocs-generator /usr/bin/mkdocs-generator
-
-ENV GITHUB_BRANCH=master
 
 VOLUME /docs
 VOLUME /html

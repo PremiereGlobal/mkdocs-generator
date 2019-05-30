@@ -1,33 +1,19 @@
 #!/bin/bash
 
-# Scrape the repos and build the markdown hierarchy
-# python build-markdown-tree.py
+# Exit on any error
+set -e
 
-cd ${BUILD_DIR}
-cp /docs/mkdocs.yml ./
-
+# Download the structure from Bitbucket
 mkdocs-generator \
   generate
 
-cp -r /docs/docs/* ./docs
+# Move any additional user files to the build dir
+cp -r ${MG_DOCS_DIR}/custom_theme ${MG_BUILD_DIR}/custom_theme
+cp -r ${MG_DOCS_DIR}/docs/* ${MG_BUILD_DIR}/docs
 
-if [ $? -eq 0 ]; then
-  # Build the mkdocs
-  # cd /docs
-  mkdocs build --clean --site-dir /build-html
-  rsync --archive --recursive --delete /build-html/ /html/
+# Build the mkdocs
+cd ${MG_BUILD_DIR}
+mkdocs build --clean --site-dir /build-html
 
-  # Push the site to github
-  # rm -rf /destination
-  # mkdir -p /destination
-  # cd /destination
-  # git config --global user.email "${GITHUB_USER_EMAIL}"
-  # git config --global user.name "${GITHUB_USER}"
-  # git clone https://${GITHUB_USER}:${GITHUB_TOKEN}@${GITHUB_URL}
-  # cd docs
-  # rm -rf html
-  # cp -R /build-html ./html
-  # git add html
-  # git commit -m "Auto-commit generated docs"
-  # git push origin ${GITHUB_BRANCH}
-fi
+# Sync the docs with the html dir
+rsync --recursive --verbose --delete /build-html/ ${MG_HTML_DIR}

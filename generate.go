@@ -67,7 +67,7 @@ func generate() {
 	taskChan = make(chan task, 2000)
 
 	// Start the workers
-	workerCount := 200
+	workerCount := 20
 	for i := 0; i < workerCount; i++ {
 		go worker(i, taskChan)
 	}

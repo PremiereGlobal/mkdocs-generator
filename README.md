@@ -1,4 +1,4 @@
-# Mkdocs Generator
+# Mkdocs Generator (for Bitbucket)
 [![Build][Build-Status-Image]][Build-Status-Url]
 
 This project scans an entire bitbucket instance for repositories with documentation and builds a [mkdocs](https://www.mkdocs.org/) website.  The generated HTML is then pushed to a Github repo to be used as an offline documentation source.
@@ -11,7 +11,7 @@ mkdocs-generator \
   --bitbucket-user=<user> \
   --bitbucket-password=<token> \
   --log-level info \
-  
+
 ```
 
 ## Docker

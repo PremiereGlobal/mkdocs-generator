@@ -161,7 +161,8 @@ func generateNav(name string, children interface{}, nav map[interface{}]interfac
 
 	// If the child is string, we've reached the end.  This is a file, add it as the value
 	case string:
-		nav[name] = c
+		basename := name[0:len(name)-len(filepath.Ext(name))]
+		nav[basename] = c
 
 	// If the child is a map, we've got more children to process
 	case map[interface{}]interface{}:
