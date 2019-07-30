@@ -1,5 +1,5 @@
 # Mkdocs Generator (for Bitbucket)
-[![Build][Build-Status-Image]][Build-Status-Url][![GoDoc](https://godoc.org/github.com/PremiereGlobal/mkdocs-generator?status.png)](http://godoc.org/github.com/PremiereGlobal/mkdocs-generator) [![Go Report Card](https://goreportcard.com/badge/github.com/PremiereGlobal/mkdocs-generator)](https://goreportcard.com/report/github.com/PremiereGlobal/mkdocs-generator) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/PremiereGlobal/mkdocs-generator/blob/master/LICENSE)
+[![Build][Build-Status-Image]][Build-Status-Url] [![GoDoc](https://godoc.org/github.com/PremiereGlobal/mkdocs-generator?status.png)](http://godoc.org/github.com/PremiereGlobal/mkdocs-generator) [![Go Report Card](https://goreportcard.com/badge/github.com/PremiereGlobal/mkdocs-generator)](https://goreportcard.com/report/github.com/PremiereGlobal/mkdocs-generator) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/PremiereGlobal/mkdocs-generator/blob/master/LICENSE)
 
 This project scans an entire bitbucket instance for repositories with documentation and builds a [mkdocs](https://www.mkdocs.org/) website.
 
