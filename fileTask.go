@@ -33,7 +33,7 @@ func (f fileTask) run(workerNum int) bool {
 	// Download and save the file
 	bodyBytes, err := bb.RawByPath(f.document.scmFilePath(), "at=refs/heads/master")
 	if err != nil {
-		log.Warn("Error downloading file referenced in ", f.referencedBy.uid, ": ", err)
+		log.Warnf("Error downloading file %s: %v", f.document.scmFilePath(), err)
 	} else {
 		filename := filepath.Join(Args.GetString("build-dir"), "docs", f.document.scmFilePath())
 		CreateFileIfNotExist(filename)
