@@ -5,7 +5,7 @@ ARG VERSION=local-docker
 WORKDIR /src/
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -ldflags "-X github.com/PremiereGlobal/mkdocs-generator/main.version=${VERSION}" -v -a -o bin/mkdocs-generator .
+RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -ldflags "-X main.version=${VERSION}" -v -a -o bin/mkdocs-generator .
 
 FROM python:3.7
 

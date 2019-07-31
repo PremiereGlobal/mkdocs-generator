@@ -45,7 +45,13 @@ func makeNav(docsDir string) {
 	// Generate the funky slice of map of slices structure that the nav requires
 	nav := make(map[interface{}]interface{})
 	generateNav("root", navMap, nav)
-	for _, y := range nav["root"].([]map[interface{}]interface{}) {
+
+	// Sort the nav by project/repo
+	var sortedNav NavList
+	sortedNav = nav["root"].(NavList)
+	sort.Sort(sortedNav)
+
+	for _, y := range sortedNav {
 		mkdocs["nav"] = append(mkdocs["nav"].([]interface{}), y)
 	}
 
@@ -185,9 +191,12 @@ func generateNav(name string, children interface{}, nav map[interface{}]interfac
 			}
 		}
 
-		// After processing all the children, add it to the nav (if the children exist)
+		// After processing all the children, sort them and add it to the nav (if the children exist)
 		if len(navChildren) > 0 {
-			nav[name] = navChildren
+			var sortedNav NavList
+			sortedNav = navChildren
+			sort.Sort(sortedNav)
+			nav[name] = sortedNav
 		}
 	}
 }
