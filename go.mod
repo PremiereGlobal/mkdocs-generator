@@ -7,6 +7,7 @@ replace github.com/PremiereGlobal/mkdocs-generator => ./
 replace gopkg.in/russross/blackfriday.v2 => github.com/russross/blackfriday v2.0.0+incompatible
 
 require (
+	github.com/hashicorp/go-retryablehttp v0.6.6
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible // indirect
 	github.com/ktrysmt/go-bitbucket v0.4.1 // indirect

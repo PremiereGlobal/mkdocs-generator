@@ -4,6 +4,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
 )
 
 type BitbucketClientConfig struct {
@@ -31,13 +32,18 @@ type BitbucketClient struct {
 
 func NewBitbucketClient(config *BitbucketClientConfig) (*BitbucketClient, error) {
 
+	// We use Hashicorp's retry client to retry if we get errors
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = 5
+	standardClient := retryClient.StandardClient()
+
 	baseUrl, err := url.Parse(config.Url)
 	if err != nil {
 		return nil, err
 	}
 
 	client := &BitbucketClient{
-		rawClient:   &http.Client{},
+		rawClient:   standardClient,
 		config:      config,
 		BaseUrl:     baseUrl,
 		BaseApiPath: "/rest/api/1.0",
