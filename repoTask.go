@@ -27,7 +27,7 @@ func (r repoTask) run(workerNum int) bool {
 		// There's a good chance that there's not a docs folder so don't do anything here...
 		browseList, err := bb.Browse(&r.repo, path)
 		if err != nil {
-			log.Debugf("Error browsing repo %s/%s/%s", r.repo.Project.Name, r.repo.Slug, path)
+			log.Debugf("Error browsing repo %s/%s/%s: %v", r.repo.Project.Name, r.repo.Slug, path, err)
 			continue
 		}
 
