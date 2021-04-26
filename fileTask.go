@@ -1,11 +1,13 @@
 package main
 
 import (
-	md "gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
+
+	md "gopkg.in/russross/blackfriday.v2"
 )
 
 // fileTask is a type of task that downloads and processes documents
@@ -34,13 +36,20 @@ func (f fileTask) run(workerNum int) bool {
 	bodyBytes, err := bb.RawByPath(f.document.scmFilePath(), "at=refs/heads/master")
 	if err != nil {
 		log.Warnf("Error downloading file %s: %v", f.document.scmFilePath(), err)
-	} else {
-		filename := filepath.Join(Args.GetString("build-dir"), "docs", f.document.scmFilePath())
-		CreateFileIfNotExist(filename)
-		err = ioutil.WriteFile(filename, bodyBytes, 0644)
-		if err != nil {
-			log.Fatal(err)
+		return false
+	}
+	if f.document.docType == markdownType {
+		if !utf8.Valid(bodyBytes) {
+			//validate that the file is valid utf8 and/or ascii or mkdocs cant parse it
+			log.Warnf("invalid utf8 on repo: %s", f.document.uid)
+			return false
 		}
+	}
+	filename := filepath.Join(Args.GetString("build-dir"), "docs", f.document.scmFilePath())
+	CreateFileIfNotExist(filename)
+	ioutil.WriteFile(filename, bodyBytes, 0644)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// If this file is markdown, parse it to find any more linked resources we

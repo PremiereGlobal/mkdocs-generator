@@ -1,13 +1,4 @@
-FROM golang:1.12-alpine as builder
-
-ARG VERSION=local-docker
-
-WORKDIR /src/
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -ldflags "-X main.version=${VERSION}" -v -a -o bin/mkdocs-generator .
-
-FROM python:3.7
+FROM python:3.8
 
 RUN apt-get update &&  \
   apt-get install -y rsync && \
@@ -26,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts /scripts
 
-COPY --from=builder /src/bin/mkdocs-generator /usr/bin/mkdocs-generator
+COPY ./bin/mkdocs-generator /usr/bin/mkdocs-generator
 
 VOLUME /docs
 VOLUME /html

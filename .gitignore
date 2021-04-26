@@ -3,3 +3,4 @@ html
 __pycache__
 .DS_Store
 mkdocs.yml
+bin

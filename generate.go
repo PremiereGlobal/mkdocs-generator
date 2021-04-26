@@ -1,9 +1,10 @@
 package main
 
 import (
-	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 	"path/filepath"
 	"sync"
+
+	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 )
 
 // task is an arbitrary item that needs to processed
@@ -27,7 +28,7 @@ var wg sync.WaitGroup
 // For example, files not being able to be processed because the work queue is
 // full of repos
 // var projectChan chan task
-var taskChan chan task
+var taskChan chan<- task
 
 // var repoChan chan task
 // var fileChan chan task
@@ -62,14 +63,14 @@ func generate() {
 	// Ensure the build directory is good to go
 	ensureBuildDir()
 
-	// Create our channels that will buffer up to x tasks at a time
-	// The buffer needs to be big enough so that one repo/file cannot fill it up
-	taskChan = make(chan task, 2000)
+	// Create our channels that will buffer all tasks and let the works run
+	var recvq <-chan task
+	taskChan, recvq = NewTaskQueue()
 
 	// Start the workers
 	workerCount := 20
 	for i := 0; i < workerCount; i++ {
-		go worker(i, taskChan)
+		go worker(i, recvq)
 	}
 
 	// We add one to the waitgroup intitially because we want to make sure we block`
@@ -86,12 +87,12 @@ func generate() {
 
 	// Loop through the projects and add a project task to the queue
 	for _, p := range projects.Values {
-			taskProject := p
-			task := projectTask{project: &taskProject}
+		taskProject := p
+		task := projectTask{project: &taskProject}
 
-			// Add a count to the waitgroup and add the task to the queue
-			wg.Add(1)
-			taskChan <- task
+		// Add a count to the waitgroup and add the task to the queue
+		wg.Add(1)
+		taskChan <- task
 	}
 
 	// We're done adding all the projects, so remove our main blocker so that

@@ -101,3 +101,37 @@ func IsDirEmpty(name string) (bool, error) {
 	}
 	return false, err
 }
+
+func NewTaskQueue() (chan<- task, <-chan task) {
+	send := make(chan task)
+	receive := make(chan task)
+	go func() {
+		queue := make([]task, 0)
+		for {
+			if len(queue) == 0 {
+				if send == nil {
+					close(receive)
+					return
+				}
+				data, ok := <-send
+				if !ok {
+					close(receive)
+					return
+				}
+				queue = append(queue, data)
+			} else {
+				select {
+				case receive <- queue[0]:
+					queue = queue[1:]
+				case value, ok := <-send:
+					if ok {
+						queue = append(queue, value)
+					} else {
+						send = nil
+					}
+				}
+			}
+		}
+	}()
+	return send, receive
+}

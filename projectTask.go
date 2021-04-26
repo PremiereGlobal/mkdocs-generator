@@ -33,7 +33,6 @@ func (p projectTask) run(workerNum int) bool {
 		// Add a count to the waitgroup and add the task to the queue
 		wg.Add(1)
 		taskChan <- task
-
 	}
 	return true
 }
