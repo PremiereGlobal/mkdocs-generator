@@ -1,44 +1,9 @@
 package bitbucket
 
-import (
-	"encoding/json"
-	"fmt"
-	"path/filepath"
-)
-
-type ProjectList struct {
-	paginatedList
-	Values []Project
-}
-
-type Project struct {
-	Key         string
-	Id          int
-	Name        string
-	Description string
-	Public      bool
-	ProjectType string `json:"type"`
-}
-
-// MakePath creates the full relative path to the repo
-func (p *Project) MakePath() string {
-	return filepath.Join("projects", p.Key)
-}
-
 // ListProjects returns a list of all projects on the Bitbucket server
-func (b *BitbucketClient) ListProjects() (*ProjectList, error) {
-
-	projectList := ProjectList{}
-
-	body, err := b.get("projects", fmt.Sprintf("limit=%d", b.limit))
-	if err != nil {
-		return nil, err
+func (b *BitbucketClient) ListProjects() ([]BBProject, error) {
+	if b.IsBBCloud {
+		return b.listProjectsBBCloud()
 	}
-
-	err = json.Unmarshal(body, &projectList)
-	if err != nil {
-		return nil, err
-	}
-
-	return &projectList, nil
+	return b.listProjectsBBServer()
 }

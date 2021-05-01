@@ -7,12 +7,13 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 	md "gopkg.in/russross/blackfriday.v2"
 )
 
 // fileTask is a type of task that downloads and processes documents
 type fileTask struct {
-
+	file bitbucket.BBFile
 	// document contains the document we want to process
 	document *document
 
@@ -22,26 +23,20 @@ type fileTask struct {
 }
 
 // run describes how a fileTask should be processed
-func (f fileTask) run(workerNum int) bool {
+func (f fileTask) run(workerNum int, taskChan chan<- task) bool {
 
-	// Decrement waitgroup counter when we're done
-	defer wg.Done()
-
-	log.Debug("Processing file task ", f.document.uid, " [worker:", workerNum, "]")
-
-	// Create new Bitbucket client
-	bb := NewBitbucketClient()
+	log.Debugf("[worker:%03d] Processing file task %s:%s", workerNum, f.document.uid, f.file.GetName())
 
 	// Download and save the file
-	bodyBytes, err := bb.RawByPath(f.document.scmFilePath(), "at=refs/heads/master")
+	bodyBytes, err := f.file.GetData()
 	if err != nil {
-		log.Warnf("Error downloading file %s: %v", f.document.scmFilePath(), err)
+		log.Warnf("[worker:%03d] Error downloading file %s: %v", workerNum, f.document.scmFilePath(), err)
 		return false
 	}
 	if f.document.docType == markdownType {
 		if !utf8.Valid(bodyBytes) {
 			//validate that the file is valid utf8 and/or ascii or mkdocs cant parse it
-			log.Warnf("invalid utf8 on repo: %s", f.document.uid)
+			log.Warnf("[worker:%03d] invalid utf8 on repo: %s", workerNum, f.document.uid)
 			return false
 		}
 	}
@@ -58,7 +53,7 @@ func (f fileTask) run(workerNum int) bool {
 		markdown := md.New(md.WithExtensions(md.CommonExtensions))
 		parser := markdown.Parse(bodyBytes)
 		parser.Walk(func(node *md.Node, entering bool) md.WalkStatus {
-			return processMarkdownNode(node, entering, f.document)
+			return processMarkdownNode(node, entering, f.document, taskChan, workerNum)
 		})
 	}
 
@@ -67,11 +62,11 @@ func (f fileTask) run(workerNum int) bool {
 
 // processMarkdownNode processes the markdown item. If we find a link or an image
 // and it hasn't already been processed, add it to the file queue
-func processMarkdownNode(node *md.Node, entering bool, sourceDocument *document) md.WalkStatus {
+func processMarkdownNode(node *md.Node, entering bool, sourceDocument *document, taskChan chan<- task, workerNum int) md.WalkStatus {
 
 	// Since this gets called twice, only execute on the entry event
 	if entering == true {
-
+		bbrepo := sourceDocument.getBBFile().GetBBRepo()
 		// We only care about links and images
 		if node.Type == md.Link || node.Type == md.Image {
 
@@ -79,7 +74,7 @@ func processMarkdownNode(node *md.Node, entering bool, sourceDocument *document)
 			// If it can't be parsed, just continue
 			linkURL, err := url.Parse(string(node.LinkData.Destination))
 			if err != nil {
-				log.Warn("Unable to parse markdown reference ", string(node.LinkData.Destination))
+				log.Warnf("[worker:%03d] Unable to parse markdown reference %s", workerNum, string(node.LinkData.Destination))
 				return md.GoToNext
 			}
 
@@ -95,51 +90,51 @@ func processMarkdownNode(node *md.Node, entering bool, sourceDocument *document)
 			}
 
 			// Get our Bitbucket URL ready
-			u, err := url.Parse(config.bitbucketUrl)
+			u, err := url.Parse(sourceDocument.getBBFile().GetBBRepo().GetBBProject().GetBBClient().BaseUrl.String())
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			// Continue nly if reference is a relative link or from the same Bitbucket host
+			log.Infof("[worker:%03d] Found link:%s in [%s]%s", workerNum, linkURL.String(), sourceDocument.getBBFile().GetBBRepo().GetName(), sourceDocument.getBBFile().GetFullPath())
+			var newBBFile bitbucket.BBFile
+			// Continue only if reference is a relative link or from the same Bitbucket host
 			if (linkURL.Host == u.Host || (linkURL.Scheme == "" && linkURL.Host == "")) && linkURL.Path != "" {
-
 				// If our path starts with a /, we don't need to add the project/repo info
-				referenceMasterFilePath := ""
 				if strings.HasPrefix(linkURL.Path, "/") {
-
 					// Get rid of the leading slash
-					referenceMasterFilePath = linkURL.Path[1:]
-
+					bbf, err := bbrepo.GetFile(linkURL.Path)
+					if err != nil {
+						log.Warnf("[worker:%03d] Found link:%s, But Got Error:%s", workerNum, linkURL.String(), err)
+						return md.GoToNext
+					}
+					newBBFile = bbf
 				} else {
-
 					// Path is relative, use the masterFilePath directory to generate
 					// the master file path for the reference file
-					sourcePath := filepath.Dir(sourceDocument.scmFilePath())
-					referenceMasterFilePath = filepath.Join(sourcePath, linkURL.Path)
+					sourcePath := filepath.Dir(sourceDocument.getBBFile().GetBasePath())
+					fp := filepath.Join(sourcePath, linkURL.Path)
+					bbf, err := bbrepo.GetFile(fp)
+					if err != nil {
+						log.Warnf("[worker:%03d] Found2 link:%s, But Got Error:%s", workerNum, linkURL.String(), err)
+						return md.GoToNext
+					}
+					newBBFile = bbf
 
 				}
-
-				// Generate the document object for this file
-				document, err := NewDocumentFromPath(referenceMasterFilePath)
-				if err != nil {
-					log.Warn("Bad file reference in ", sourceDocument.uid, ": ", err)
+				if newBBFile == nil {
 					return md.GoToNext
 				}
+				// Generate the document object for this file
+				document := NewDocument(bbrepo.GetBBProject().GetKey(), bbrepo.GetSlug(), newBBFile.GetFullPath(), newBBFile)
 				document.docType = docType
 
 				// Check if the file is on the master list, if not, add it
-				if _, ok := masterFileList.Load(document.uid); !ok {
-
+				if _, ok := masterFileList.LoadOrStore(document.uid, document); !ok {
 					// Create a task to process this file
-					task := fileTask{document: document, referencedBy: sourceDocument}
-
-					// Add the file to the master list so nothing else processes it
-					masterFileList.Store(document.uid, document)
-
-					// Add a count to the waitgroup and add the task to the queue
-					wg.Add(1)
+					task := fileTask{document: document, referencedBy: sourceDocument, file: newBBFile}
 					taskChan <- task
-
+				} else {
+					log.Infof("[worker:%03d] Skipped, already processed link:%s", workerNum, linkURL.String())
 				}
 			}
 		}

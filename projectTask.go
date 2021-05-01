@@ -5,33 +5,25 @@ import (
 )
 
 type projectTask struct {
-	project *bitbucket.Project
+	project bitbucket.BBProject
 }
 
-func (p projectTask) run(workerNum int) bool {
+func (p projectTask) run(workerNum int, taskChan chan<- task) bool {
 
-	// Decrement waitgroup counter when we're done
-	defer wg.Done()
-
-	log.Info("Processing project task ", p.project.MakePath(), " [worker:", workerNum, "]")
-
-	// Create new Bitbucket client
-	bb := NewBitbucketClient()
+	log.Infof("[worker:%03d] Processing project task %s", workerNum, p.project.GetKey())
 
 	// Get the list of repos in this project
-	repos, err := bb.ListRepos(p.project)
+	repos, err := p.project.ListRepos()
 	if err != nil {
-		log.Fatal("Unable to list repos for ", p.project.MakePath(), ": ", err)
+		log.Fatalf("[worker:%03d] Unable to list repos for %s:%s", workerNum, p.project.GetKey(), err)
 	}
 
 	// Loop through the repos and add them to the queue
-	for _, r := range repos.Values {
+	for _, r := range repos {
 
 		// Create the repo task
 		task := repoTask{repo: r}
 
-		// Add a count to the waitgroup and add the task to the queue
-		wg.Add(1)
 		taskChan <- task
 	}
 	return true

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 // Args contains any arguments to the program
@@ -66,17 +67,23 @@ func initCmd() {
 	Args.BindPFlag("bitbucket-user", generateCmd.Flags().Lookup("bitbucket-user"))
 	generateCmd.Flags().StringP("bitbucket-password", "p", "", "Bitbucket password")
 	Args.BindPFlag("bitbucket-password", generateCmd.Flags().Lookup("bitbucket-password"))
+	generateCmd.Flags().StringP("bitbucket-workspace", "w", "", "Bitbucket workspace to use (bitbucket.org only)")
+	Args.BindPFlag("bitbucket-workspace", generateCmd.Flags().Lookup("bitbucket-workspace"))
 	generateCmd.Flags().StringP("build-dir", "d", "build", "The directory to build out the markdown structure")
 	Args.BindPFlag("build-dir", generateCmd.Flags().Lookup("build-dir"))
 	generateCmd.Flags().StringP("docs-dir", "c", "", "Path an existing mkdocs structure (including a mkdocs.yml file)")
 	Args.BindPFlag("docs-dir", generateCmd.Flags().Lookup("docs-dir"))
+	generateCmd.Flags().IntP("workers", "", 20, "Number of worker threads to use to process requests")
+	Args.BindPFlag("workers", generateCmd.Flags().Lookup("workers"))
 
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(versionCmd)
 }
 
 func initConfig() {
+
 	v := Args.GetString("log-level")
+	fmt.Printf("Setting Logger to [%s]\n", v)
 	switch v {
 	case "fatal":
 		log.SetLevel(logrus.FatalLevel)

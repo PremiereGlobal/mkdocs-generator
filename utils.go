@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // CreateFileIfNotExist attempts to create the full path and file if it does not exist
@@ -102,9 +103,15 @@ func IsDirEmpty(name string) (bool, error) {
 	return false, err
 }
 
-func NewTaskQueue() (chan<- task, <-chan task) {
+// task is an arbitrary item that needs to processed
+type task interface {
+	run(int, chan<- task) bool
+}
+
+func NewTaskQueue(workercount int) (chan<- task, <-chan task, *sync.WaitGroup) {
 	send := make(chan task)
 	receive := make(chan task)
+	wg := &sync.WaitGroup{}
 	go func() {
 		queue := make([]task, 0)
 		for {
@@ -118,6 +125,7 @@ func NewTaskQueue() (chan<- task, <-chan task) {
 					close(receive)
 					return
 				}
+				wg.Add(1)
 				queue = append(queue, data)
 			} else {
 				select {
@@ -125,6 +133,7 @@ func NewTaskQueue() (chan<- task, <-chan task) {
 					queue = queue[1:]
 				case value, ok := <-send:
 					if ok {
+						wg.Add(1)
 						queue = append(queue, value)
 					} else {
 						send = nil
@@ -133,5 +142,14 @@ func NewTaskQueue() (chan<- task, <-chan task) {
 			}
 		}
 	}()
-	return send, receive
+	for i := 0; i < workercount; i++ {
+		wn := i
+		go func() {
+			for task := range receive {
+				task.run(wn, send)
+				wg.Done()
+			}
+		}()
+	}
+	return send, receive, wg
 }

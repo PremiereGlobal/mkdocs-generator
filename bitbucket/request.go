@@ -5,36 +5,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path/filepath"
 )
 
-type paginatedList struct {
-	Size       int
-	Limit      int
-	IsLastPage bool
-	Start      int
-}
-
-// Path element for
-type Path struct {
-	Components []string
-	Parent     string
-	Name       string
-	Extension  string
-	ToString   string
-}
-
-func (b *BitbucketClient) Get(path string, query string) ([]byte, error) {
-	return b.get(path, query)
-}
-
 func (b *BitbucketClient) get(path string, query string) ([]byte, error) {
-
-	u := b.BaseUrl
+	u, _ := url.Parse(b.BaseUrl.String())
 	u.Path = filepath.Join(b.BaseApiPath, path, "/")
 	u.RawQuery = query
+	return b.getURL(u)
+}
 
-	request := &http.Request{Method: "GET", URL: u, Header: http.Header{}}
+func (b *BitbucketClient) getURL(gurl *url.URL) ([]byte, error) {
+	request := &http.Request{Method: "GET", URL: gurl, Header: http.Header{}}
 	request.SetBasicAuth(b.config.Username, b.config.Password)
 
 	response, err := b.rawClient.Do(request)
