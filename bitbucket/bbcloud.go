@@ -300,7 +300,7 @@ func (bbf *BBCloudFile) GetFileType() string {
 	if bbf.Type == "commit_file" {
 		return "FILE"
 	} else if bbf.Type == "commit_directory" {
-		return "DICRECTORY"
+		return "DIRECTORY"
 	}
 	return ""
 }
