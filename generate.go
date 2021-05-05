@@ -7,11 +7,6 @@ import (
 	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 )
 
-// task is an arbitrary item that needs to processed
-type task interface {
-	run(int) bool
-}
-
 // masterFileList holds all of the files that have been processed so we don't duplicate
 // Map keys should be in the formats:
 //   projects/<project>/repos/<repo>/raw/<filepath>
@@ -19,65 +14,30 @@ type task interface {
 //   projects/<project>/repos/<repo>/browse/<filepath>
 var masterFileList sync.Map
 
-// This is our main waitgroup that counts items added/removed from the process
-// queue.  When this gets to 0, we're done
-var wg sync.WaitGroup
-
-// Define our worker channels
-// We create a channel for each type of workload because don't want to block.
-// For example, files not being able to be processed because the work queue is
-// full of repos
-// var projectChan chan task
-var taskChan chan<- task
-
-// var repoChan chan task
-// var fileChan chan task
-
-// generateConfig is our configuration type
-type generateConfig struct {
-	bitbucketUrl      string
-	bitbucketUser     string
-	bitbucketPassword string
-}
-
-// config contains our configuration
-var config generateConfig
-
-// worker is the main worker function that processes all tasks
-// This will be called in a goroutine
-func worker(workerNum int, taskChan <-chan task) {
-	for task := range taskChan {
-		task.run(workerNum)
-	}
-}
-
 func generate() {
-
-	// Load up our config
-	config = generateConfig{
-		bitbucketUrl:      Args.GetString("bitbucket-url"),
-		bitbucketUser:     Args.GetString("bitbucket-user"),
-		bitbucketPassword: Args.GetString("bitbucket-password"),
-	}
 
 	// Ensure the build directory is good to go
 	ensureBuildDir()
 
-	// Create our channels that will buffer all tasks and let the works run
-	var recvq <-chan task
-	taskChan, recvq = NewTaskQueue()
-
-	// Start the workers
-	workerCount := 20
-	for i := 0; i < workerCount; i++ {
-		go worker(i, recvq)
+	bbConfig := bitbucket.BitbucketClientConfig{
+		Url:       Args.GetString("bitbucket-url"),
+		Username:  Args.GetString("bitbucket-user"),
+		Password:  Args.GetString("bitbucket-password"),
+		Workspace: Args.GetString("bitbucket-workspace"),
+		Logger:    log,
 	}
 
-	// We add one to the waitgroup intitially because we want to make sure we block`
-	// until we get through adding all the project tasks to the queue
-	wg.Add(1)
+	bb, err := bitbucket.NewBitbucketClient(&bbConfig)
+	if err != nil {
+		log.Fatal("Unable to create Bitbucket client ", err)
+	}
 
-	bb := NewBitbucketClient()
+	workerCount := Args.GetInt("workers")
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	taskChan, _, wg := NewTaskQueue(workerCount)
 
 	// Get the list of projects
 	projects, err := bb.ListProjects()
@@ -86,18 +46,11 @@ func generate() {
 	}
 
 	// Loop through the projects and add a project task to the queue
-	for _, p := range projects.Values {
+	for _, p := range projects {
 		taskProject := p
-		task := projectTask{project: &taskProject}
-
-		// Add a count to the waitgroup and add the task to the queue
-		wg.Add(1)
+		task := projectTask{project: taskProject}
 		taskChan <- task
 	}
-
-	// We're done adding all the projects, so remove our main blocker so that
-	// the program can exit as soon as all the projects are done
-	wg.Done()
 
 	// Now wait for all the tasks to finish
 	wg.Wait()
@@ -107,22 +60,6 @@ func generate() {
 	if docsDir != "" {
 		makeNav(docsDir)
 	}
-}
-
-func NewBitbucketClient() *bitbucket.BitbucketClient {
-
-	bbConfig := bitbucket.BitbucketClientConfig{
-		Url:      config.bitbucketUrl,
-		Username: config.bitbucketUser,
-		Password: config.bitbucketPassword,
-	}
-
-	client, err := bitbucket.NewBitbucketClient(&bbConfig)
-	if err != nil {
-		log.Fatal("Unable to create Bitbucket client ", err)
-	}
-
-	return client
 }
 
 // ensureBuildDir ensures that the build directory exists, is a directory and

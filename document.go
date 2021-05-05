@@ -1,11 +1,10 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
+
+	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 )
 
 // docType specifies a type of a single document
@@ -31,42 +30,24 @@ type document struct {
 	project  string
 	repo     string
 	filePath string
+	bbfile   bitbucket.BBFile
 }
 
 // NewDocument generates a new document object from its components
-func NewDocument(project string, repo string, filePath string) *document {
+func NewDocument(project string, repo string, filePath string, bbfile bitbucket.BBFile) *document {
 	document := document{
 		project:  strings.ToUpper(project),
 		repo:     repo,
 		filePath: filePath,
+		bbfile:   bbfile,
 	}
 	document.uidGen()
 
 	return &document
 }
 
-// NewDocumentFromPath generates a new document object from a given scmPath
-func NewDocumentFromPath(scmPath string) (*document, error) {
-
-	var (
-		project  string
-		repo     string
-		filePath string
-	)
-
-	// Break the path out into its components
-	pathParts := strings.Split(scmPath, string(os.PathSeparator))
-
-	// Ensure we have the right components to make up a document
-	if pathParts[0] != "projects" || pathParts[2] != "repos" || !(pathParts[4] == "raw" || pathParts[4] == "browse") {
-		return nil, errors.New(fmt.Sprintf("Reference to a bad Bitbucket file %s", scmPath))
-	} else {
-		project = pathParts[1]
-		repo = pathParts[3]
-		filePath = filepath.Join(pathParts[5:]...)
-	}
-
-	return NewDocument(project, repo, filePath), nil
+func (d *document) getBBFile() bitbucket.BBFile {
+	return d.bbfile
 }
 
 func (d *document) uidGen() {

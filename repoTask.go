@@ -1,43 +1,34 @@
 package main
 
 import (
-	"path/filepath"
-
 	bitbucket "github.com/PremiereGlobal/mkdocs-generator/bitbucket"
 )
 
 type repoTask struct {
-	repo bitbucket.Repo
+	repo bitbucket.BBRepo
 }
 
-func (r repoTask) run(workerNum int) bool {
-
-	// Decrement waitgroup counter when we're done
-	defer wg.Done()
-
-	log.Info("Processing repo task ", r.repo.MakePath(), " [worker:", workerNum, "]")
-
-	// Create new Bitbucket client
-	bb := NewBitbucketClient()
+func (r repoTask) run(workerNum int, taskChan chan<- task) bool {
+	log.Infof("[worker:%03d] Processing repo task %s", workerNum, r.repo.GetFilesURL())
 
 	// Get the list of files at this path
 	// There's a good chance that there's not a docs folder so don't do anything here...
-	browseList, err := bb.Browse(&r.repo, "/")
+	browseList, err := r.repo.GetDir("/")
 	if err != nil {
-		log.Debugf("Error browsing repo %s/%s/%s: %v", r.repo.Project.Name, r.repo.Slug, "/", err)
+		log.Debugf("[worker:%03d] Error browsing repo %s/%s/%s: %v", workerNum, r.repo.GetBBProject().GetName(), r.repo.GetSlug(), "/", err)
 		return true
 	}
 
 	// Loop over the files
-	r.checkFiles(browseList)
-	for _, f := range browseList.Children.Values {
-		if f.FileType == "DIRECTORY" && f.Path.Name == "docs" {
-			browseList, err := bb.Browse(&r.repo, "/docs")
+	r.checkFiles(browseList, taskChan, workerNum)
+	for _, f := range browseList {
+		if f.GetFileType() == "DIRECTORY" && f.GetName() == "docs" {
+			browseList, err := r.repo.GetDir("/docs")
 			if err != nil {
-				log.Debugf("Error browsing repo %s/%s/%s: %v", r.repo.Project.Name, r.repo.Slug, "/docs", err)
+				log.Debugf("[worker:%03d] Error browsing repo %s/%s/%s: %v", workerNum, r.repo.GetBBProject().GetName(), r.repo.GetSlug(), "/docs", err)
 				return true
 			}
-			r.checkFiles(browseList)
+			r.checkFiles(browseList, taskChan, workerNum)
 			return true
 		}
 	}
@@ -45,26 +36,23 @@ func (r repoTask) run(workerNum int) bool {
 	return true
 }
 
-func (r repoTask) checkFiles(bl *bitbucket.BrowseList) {
-	for _, f := range bl.Children.Values {
+func (r repoTask) checkFiles(bbfl []bitbucket.BBFile, taskChan chan<- task, workerNum int) {
+	for _, f := range bbfl {
 
 		// If the file is markdown, process it
-		if f.Path.Extension == "md" {
-
+		fname := f.GetName()
+		if len(fname) > 4 && fname[len(fname)-3:] == ".md" {
+			log.Debugf("[worker:%03d] Added File:%s", workerNum, fname)
 			// Generate the document object for this file
-			document := NewDocument(r.repo.Project.Key, r.repo.Slug, filepath.Join(bl.Path.ToString, f.Path.ToString))
+			document := NewDocument(r.repo.GetBBProject().GetKey(), r.repo.GetSlug(), f.GetFullPath(), f)
 			document.docType = markdownType
 
-			// Create a task to process this file
-			task := fileTask{document: document}
-
-			// Add the file to the master list so nothing else processes it
-			masterFileList.Store(document.uid, document)
-
-			// Add a count to the waitgroup and add the task to the queue
-			wg.Add(1)
-			taskChan <- task
-
+			//See if we can store the document if we can, because its not there, we will add a task (on store ok==false)
+			if _, ok := masterFileList.LoadOrStore(document.uid, document); !ok {
+				// Create a task to process this file
+				task := fileTask{document: document, file: f}
+				taskChan <- task
+			}
 		}
 	}
 
